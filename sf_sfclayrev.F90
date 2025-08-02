@@ -12,9 +12,7 @@
  real(kind=kind_phys),parameter:: vconvc= 1.
  real(kind=kind_phys),parameter:: czo   = 0.0185
  real(kind=kind_phys),parameter:: ozo   = 1.59e-5
- logical,parameter             :: if_kim_form_drag =.true.
  real(kind=kind_phys),parameter:: varf_min = 5.
- real(kind=kind_phys),parameter:: zffac    = 0.003
  real(kind=kind_phys),parameter:: ca_square       = 0.4 * 0.4
 
  real(kind=kind_phys),dimension(0:1000 ),save:: psim_stab,psim_unstab,psih_stab,psih_unstab
@@ -84,7 +82,7 @@
                              cpm,pblh,rmol,znt,ust,mavail,zol,mol,     &
                              regime,psim,psih,fm,fh,                   &
                              xland,hfx,qfx,tsk,                        &
-                             varf,                                     &
+                             varf,if_kim_tofd,tofd_factor,             &
                              u10,v10,th2,t2,q2,flhc,flqc,qgh,          &
                              qsfc,lh,gz1oz0,wspd,br,isfflx,dx,         &
                              svp1,svp2,svp3,svpt0,ep1,ep2,             &
@@ -98,6 +96,7 @@
 
 !--- input arguments:
  logical,intent(in):: isfflx
+ logical,intent(in):: if_kim_tofd
  logical,intent(in):: shalwater_z0
  logical,intent(in),optional:: scm_force_flux
 
@@ -108,6 +107,7 @@
  real(kind=kind_phys),intent(in):: ep1,ep2,karman
  real(kind=kind_phys),intent(in):: p1000mb
  real(kind=kind_phys),intent(in):: cp,g,rovcp,r,xlv
+ real(kind=kind_phys),intent(in):: tofd_factor
 
  real(kind=kind_phys),intent(in),dimension(its:):: &
     mavail,     &
@@ -224,6 +224,7 @@
 !
     cf(:) = 0.
 
+   print*,'if_kim_tofd tofd_factor ',if_kim_tofd,tofd_factor
 !-----------------------------------------------------------------------------------------------------------------
 
  do i = its,ite
@@ -705,8 +706,8 @@
 !         psiq10=gz10oz0(i)-psih(i)+2.28*sqrt(sqrt(restar))-2.
        endif
     endif
-    if ( (if_kim_form_drag) .and. varf(i).gt.varf_min ) then
-      zf    = min( varf(i)*zffac,za(i) )
+    if ( (if_kim_tofd) .and. varf(i).gt.varf_min ) then
+      zf    = min( varf(i)*tofd_factor,za(i) )
       fri   = min( max( 1.-br(i),0. ), 1.)
       ff    = log( ( za(i) + zf) / zf )
       cf(i) = ca_square / (ff*ff) * fri
@@ -772,7 +773,7 @@
        endif
     endif
 ! TO PREVENT OSCILLATIONS AVERAGE WITH OLD VALUE 
-    if ( (if_kim_form_drag) .and. (cf(i).gt.1.e-20) ) then
+    if ( (if_kim_tofd) .and. (cf(i).gt.1.e-20) ) then
       ust(i)=0.5*ust(i)+0.5*karman*wspd(i)/psix+0.5*sqrt(cf(i))*wspd(i)                                             
     else
       ust(i)=0.5*ust(i)+0.5*karman*wspd(i)/psix                                             

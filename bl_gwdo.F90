@@ -47,6 +47,7 @@
                      oa2d3, oa2d4,                                             &
                      ol2d1, ol2d2,                                             &
                      ol2d3, ol2d4, omax,                                       &
+                     dx_factor, if_nonhyd,                                     &
                      g_, cp_, rd_, rv_, fv_, pi_,                              &
                      dxmeter, deltim,                                          &
                      its, ite, kte, kme,                                       &
@@ -105,8 +106,11 @@
 !
    integer               , intent(in   ) ::                                    &
                                             its, ite, kte, kme
+   logical               , intent(in   ) ::                                    &
+                                            if_nonhyd
    real(kind=kind_phys)  , intent(in   ) ::                                    &
-                                            g_, pi_, rd_, rv_, fv_, cp_, deltim
+                                            g_, pi_, rd_, rv_, fv_, cp_,       &
+                                            deltim, dx_factor
 !
    real(kind=kind_phys), dimension(its:)  , intent(in   ) ::                   &
                                             dxmeter,sina, cosa,var, oc1, omax, &
@@ -146,7 +150,6 @@
                         veleps  = 1.0    ,&
                         frc     = 1.0    ,&
                         ce      = 0.8    ,&
-                        dx_factor = 2.0  ,&
                         cg      = 1.     ,&
                         var_min = 10.    ,&
                         hmt_min = 50.    ,&
@@ -180,8 +183,8 @@
 !
 ! option for nonhydrostatic effect (xu et al. 2024)
 !
-   logical,parameter                                  ::  if_nhd_effect =.false.
-   real(kind=kind_phys)                               ::  nhd_effect
+   real(kind=kind_phys)                               :: nhd_effect
+!
    real(kind=kind_phys), dimension(its:ite,kts:kte+1) :: taup
    real(kind=kind_phys), dimension(its:ite,kts:kte-1) :: velco
    real(kind=kind_phys), dimension(its:ite,kts:kte)   ::                                       &
@@ -210,6 +213,7 @@
    lcapp1 = lcap + 1
    fdir   = mdir / (2.0*pi_)
    kgwdmax = kte / 2 ! maximum height for gwd stress : # of vertical levels / 2
+  print*,'dx_afctor if_nonhyyd',dx_factor,if_nonhyd
 !
 ! initialize CCPP error flag and message
 !
@@ -460,7 +464,7 @@
        gfobnv   = gmax * tem / ((tem + cg)*bnv(i))
        taub(i)  = xlinv(i) * rhobar(i) * ulow(i) * ulow(i)                     &
                 * ulow(i) * gfobnv * efact
-       if (if_nhd_effect) then
+       if (if_nonhyd) then
          tem = fr(i) * fr(i)
          nhd_effect = -9./8.*tem + exp(-2./fr(i))                              &
                    *(-5./4./tem-0.5/fr(i)+5./4.+9./4.*fr(i)+9./8.*tem)
