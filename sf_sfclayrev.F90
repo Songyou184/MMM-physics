@@ -704,6 +704,10 @@
 !         psiq10=gz10oz0(i)-psih(i)+2.28*sqrt(sqrt(restar))-2.
        endif
     endif
+!
+!   option for tofd as in kim model (koo et. al. 2018, koo and hong 2025)
+!   24 August 25 (hong@ucar.edu)
+!
     if ( (if_kim_tofd) .and. varf(i).gt.varf_min ) then
       zf    = min( varf(i)*tofd_factor,za(i) )
       fri   = min( max( 1.-br(i),0. ), 1.)
