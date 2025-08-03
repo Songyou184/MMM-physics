@@ -223,8 +223,6 @@
  real(kind=kind_phys)                   :: zf, fri, ff
 !
     cf(:) = 0.
-
-   print*,'if_kim_tofd tofd_factor ',if_kim_tofd,tofd_factor
 !-----------------------------------------------------------------------------------------------------------------
 
  do i = its,ite

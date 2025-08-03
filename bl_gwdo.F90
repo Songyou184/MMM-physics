@@ -213,7 +213,6 @@
    lcapp1 = lcap + 1
    fdir   = mdir / (2.0*pi_)
    kgwdmax = kte / 2 ! maximum height for gwd stress : # of vertical levels / 2
-  print*,'dx_afctor if_nonhyyd',dx_factor,if_nonhyd
 !
 ! initialize CCPP error flag and message
 !
