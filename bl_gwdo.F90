@@ -58,23 +58,22 @@
 !    this code handles the time tendencies of u v due to the effect of
 !    mountain induced gravity wave drag from sub-grid scale orography.
 !    this routine not only treats the traditional upper-level wave breaking due
-!    to mountain variance (alpert 1988), but also the enhanced
-!    lower-tropospheric wave breaking due to mountain convexity and asymmetry
-!    (kim and arakawa 1995). thus, in addition to the terrain height data
-!    in a model grid gox, additional 10-2d topographic statistics files are
-!    needed, including orographic standard  deviation (var), convexity (oc1),
-!    asymmetry (oa4) and ol (ol4). these data sets are prepared based on the
-!    30 sec usgs orography (hong 1999). the current scheme was implmented as in
-!    choi and hong (2015), which names kim gwdo since it was developed by
-!    kiaps staffs for kiaps integrated model system (kim). the scheme
-!    additionally includes the effects of orographic anisotropy and
-!    flow-blocking drag.
-!    coded by song-you hong and young-joon kim and implemented by song-you hong
+!    to mountain variance, but also the enhanced lower-tropospheric wave 
+!    breaking due to mountain convexity and asymmetry (kim and arakawa 1995). 
+!    thus, in addition to the terrain height data in a model grid gox, 
+!    additional 10-2d topographic statistics files are needed, including 
+!    orographic standard  deviation (var), convexity (oc1),asymmetry (oa4) and 
+!    ol (ol4). the current scheme was implmented as in choi and hong (2015) and 
+!    revised as in hong et al (2025), which names kim gwdo since it has been 
+!    developed by kiaps staffs for kiaps integrated model system (kim) 
 !
 !  history log :
-!    2015-07-01  hyun-joo choi add flow-blocking drag and orographic anisotropy
-!    2023-11-27  song-you hong introduce elevation maximum (omax) and revisions
-!                         refine wind reversal and damp drag above stratosphere
+!    1996-11-27  implemented onto ncep mrf model 
+!                song-you hong, young-joon kim and jordan alpert 
+!    2015-07-01  added flow-blocking drag and orographic anisotropy
+!                hyun-joo choi
+!    2024-11-27  introduced elevation maximum (omax) and numerous revisions
+!                song-you hong
 !
 !  references :
 !    hong et al. (2025), wea. forecasting
@@ -134,32 +133,29 @@
 !
    integer, parameter       ::            &
                         kts     = 1      ,&
-                        kgwdmin = 2      ,&
-                        mdir    = 8
+                        kgwdmin = 2      ,&  !< minim level for reference level
+                        mdir    = 8          !< number of wind rose
 !
    real(kind=kind_phys), parameter     :: &
-                        ric     = 0.25   ,&  !< a critical richadson number
-                        dw2min  = 1.     ,&
-                        rimin   = -100.  ,&
-                        bnv2min = 1.0e-5 ,&
-                        efmin   = 0.     ,&
-                        efmax   = 10.    ,&
-                        xl      = 4.0e4  ,&
-                        critac  = 1.0e-5 ,&
-                        gmax    = 1.     ,&
-                        veleps  = 1.0    ,&
-                        frc     = 1.0    ,&
-                        ce      = 0.8    ,&
-                        cg      = 1.     ,&
-                        var_min = 10.    ,&
-                        hmt_min = 50.    ,&
-                        oc_min  = 1.     ,&
-                        oc_max  = 10.    ,&
-                        frmax  = 10.     ,&
-                        olmin  = 1.0e-5  ,&
-                        odmin  = 0.1     ,&
-                        odmax  = 10.     ,&
-                        cdmin  = 0.      ,&
+                        qmin    = 1.0e-30,&  !< a minimum   
+                        ric     = 0.25   ,&  !< critical richadson number
+                        velmin  = 1.     ,&  !< minimum wind speed
+                        rimin   = -100.  ,&  !< minimum richardson number
+                        bnv2min = 1.0e-5 ,&  !< minimum of brunt vaisalla square
+                        efacmin = 0.     ,&  !< minimum of enhancement factor
+                        efacmax = 10.    ,&  !< maximum of enhancement factor
+                        frc     = 1.0    ,&  !< critical Froude number
+                        frmax   = 10.    ,&  !< maximum of Frounde number
+                        ce      = 0.8    ,&  !< paramter from mesoscacle model
+                        cg      = 1.     ,&  !< paramter from mesoscacle model
+                        var_min = 10.    ,&  !< minimum of standard deviation [m]
+                        hmt_min = 50.    ,&  !< minimum of orographic height  [m]
+                        oc_min  = 1.     ,&  !< minimum of convexity
+                        oc_max  = 10.    ,&  !< minimum of convexity 
+                        olmin   = 1.0e-5 ,&  !< minimum of orographic length
+                        odmin   = 0.1    ,&  !< minimum of origraphic direction
+                        odmax   = 10.    ,&  !< maximum of origraphic direction
+                        cdmin   = 0.     ,&  !< minimum of bulk drag coefficent
                         pcutoff  = 7.5e2 ,&  !< 7.5 mb (33 km) 0.76 mb (50km) 0.1 mb (65km)
                         pcutoff_den  = 0.01  !< 0.01 kgm-3     0.001 kgm-3    0.0001 kgm-3
 !
@@ -170,12 +166,12 @@
 !
    real(kind=kind_phys)                 ::                                                     &
                         fdir, cs, rcsks, wdir, ti, rdz, tem1, tem2, temc, tem, temv, dw2, shr2,&
-                        bvf2, rdelks, wtkbj, gfobnv, hd, fro, rim, efact, dtaux, dtauy, denfac,&
-                        fbdcd, zblk, tautem, fbdpe, fbdke
+                        bvf2, rdelks, wtkbj, gfac, hd, fro, rim, efac, dtaux, dtauy, denfac,   &
+                        fbdcd, zblk, tautem, fbdpe, fbdke, xlinv
 !
    real(kind=kind_phys), dimension(its:ite)           ::                                       &
                          dusfc, dvsfc, coefm, taub, xn, yn, ubar, vbar, fr, ulow, rulow, bnv,  &
-                         oa, ol, oc, rhobar, brvf, xlinv, delks,delks1, zref, dx_eff
+                         oa, ol, oc, rhobar, brvf, delks,delks1, zref, dx_eff
 !
    real(kind=kind_phys), dimension(its:ite,kts:kte)   ::                                       &
                          dudt, dvdt, dtaux2d, dtauy2d
@@ -245,7 +241,7 @@
    oa      = 0.      ; ol     = 0.      ; oc      = 0.     ; taub    = 0.
    usqj    = 0.      ; bnv2   = 0.      ; vtj     = 0.     ; vtk     = 0.
    taup    = 0.      ; taud   = 0.      ; dtaux2d = 0.     ; dtauy2d = 0.
-   dtfac   = 1.0     ; xlinv  = 1.0/xl  ; denfac = 1.0
+   dtfac   = 1.0     ; xlinv  = 1.0     ; denfac =  1.0
    nhd_effect = 1.0
 !
    do k = kts,kte
@@ -368,7 +364,7 @@
        tem1      = u1(i,k) - u1(i,k+1)
        tem2      = v1(i,k) - v1(i,k+1)
        dw2       = tem1*tem1 + tem2*tem2
-       shr2      = max(dw2,dw2min) * rdz * rdz
+       shr2      = max(dw2,velmin) * rdz * rdz
        bvf2      = g_*(g_/cp_+rdz*(vtj(i,k+1)-vtj(i,k))) * ti
        usqj(i,k) = max(bvf2/shr2,rimin)
        bnv2(i,k) = 2.0*g_*rdz*(vtk(i,k+1)-vtk(i,k))/(vtk(i,k+1)+vtk(i,k))
@@ -387,10 +383,10 @@
    do k = kts,kte-1
      do i = its,ite
        velco(i,k) = 0.5 * ((u1(i,k)+u1(i,k+1)) * ubar(i)                       &
-                          + (v1(i,k)+v1(i,k+1)) * vbar(i))
+                         + (v1(i,k)+v1(i,k+1)) * vbar(i))
        velco(i,k) = velco(i,k) * rulow(i)
-       if ((velco(i,k)<veleps) .and. (velco(i,k)>0.)) then
-         velco(i,k) = veleps
+       if ((velco(i,k) < velmin) .and. (velco(i,k) >0. )) then
+         velco(i,k) = velmin
        endif
      enddo
    enddo
@@ -455,14 +451,14 @@
 !
    do i = its,ite
      if (.not. ldrag(i))   then
-       efact    = (oa(i) + 2.) ** (ce*fr(i)/frc)
-       efact    = min( max(efact,efmin), efmax )
+       efac    = (oa(i) + 2.) ** (ce*fr(i)/frc)
+       efac    = min( max(efac,efacmin), efacmax )
        coefm(i) = (1. + ol(i)) ** (oa(i)+1.)
-       xlinv(i) = coefm(i) / dx_eff(i)
+       xlinv    = coefm(i) / dx_eff(i)
        tem      = fr(i) * fr(i) * oc(i)
-       gfobnv   = gmax * tem / ((tem + cg)*bnv(i))
-       taub(i)  = xlinv(i) * rhobar(i) * ulow(i) * ulow(i)                     &
-                * ulow(i) * gfobnv * efact
+       gfac     = tem / (tem + cg)
+       taub(i)  = rhobar(i) * efac * xlinv * gfac * ulow(i)*ulow(i)*ulow(i)    &
+                  / bnv(i)
        if (if_nonhyd) then
          tem = fr(i) * fr(i)
          nhd_effect = -9./8.*tem + exp(-2./fr(i))                              &
@@ -582,11 +578,11 @@
      enddo
    enddo
 !
-! apply the damping factor to prevent wind reversal 
+! apply damping factor to prevent wind reversal 
 !
    do k = kts,kgwdmax-1
      do i = its,ite
-       if (taud(i,k) /= 0.) then
+       if (abs(taud(i,k)) >= qmin) then
          dtfac(i,k) = min(dtfac(i,k),abs(velco(i,k)/(deltim*taud(i,k))))
        endif
      enddo
@@ -596,10 +592,10 @@
 !
    do k = kgwdmax,kte
      do i = its,ite
-       if (taud(i,k)/=0. .and. prsl(i,k)<=pcutoff) then
+       if (abs(taud(i,k)) >= qmin .and. prsl(i,k) <= pcutoff) then
          denfac = min(rho(i,k)/pcutoff_den,1.)
          dtfac(i,k) = min(dtfac(i,k),denfac*abs(velco(i,k)                     &
-                       /(deltim*(taud(i,k)))))
+                     /(deltim*taud(i,k))))
        endif
      enddo
    enddo
@@ -647,4 +643,4 @@
 !
 !=============================================================================
  end module bl_gwdo
-!============================================================================-
+!=============================================================================
