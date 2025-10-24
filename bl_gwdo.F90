@@ -590,7 +590,7 @@
 !
 ! apply limiter to mesosphere drag, reduce the drag by a density factor
 !
-   do k = kgwdmax,kte
+   do k = kgwdmax,kte-1
      do i = its,ite
        if (abs(taud(i,k)) >= qmin .and. prsl(i,k) <= pcutoff) then
          denfac = min(rho(i,k)/pcutoff_den,1.)
@@ -599,6 +599,7 @@
        endif
      enddo
    enddo
+   dtfac(:,kte) = dtfac(:,kte-1)
 !
    do i = its,ite
      dusfc(i) = 0.
