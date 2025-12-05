@@ -2033,7 +2033,7 @@
  real(kind=kind_phys):: x,ym,psimc,psimk
 
  x=(1.-16.*zolf)**.25
- psimk=2*ALOG(0.5*(1+X))+ALOG(0.5*(1+X*X))-2.*ATAN(X)+2.*ATAN(1.)
+ psimk=2*LOG(0.5*(1+X))+LOG(0.5*(1+X*X))-2.*ATAN(X)+2.*ATAN(1.)
 
  ym=(1.-10.*zolf)**0.33
  psimc=(3./2.)*log((ym**2.+ym+1.)/3.)-sqrt(3.)*ATAN((2.*ym+1)/sqrt(3.))+4.*ATAN(1.)/sqrt(3.)
