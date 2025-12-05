@@ -1100,7 +1100,7 @@
  zw  = min((ustar/1.06)**(0.3),1.0)
  zn1 = 0.011*ustar*ustar/g + ozo
  zn2 = 10.*exp(-9.5*ustar**(-.3333)) + &
-       0.11*1.5e-5/amax1(ustar,0.01)
+       0.11*1.5e-5/max(ustar,0.01)
  z_0 = (1.0-zw) * zn1 + zw * zn2
 
  z_0 = max( z_0, 1.27e-7)  !these max/mins were suggested by
