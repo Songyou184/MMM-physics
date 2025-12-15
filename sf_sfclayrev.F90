@@ -220,7 +220,7 @@
     pq2,        &
     pq10,       &
     cf
- real(kind=kind_phys)                   :: zf, fri, ff
+ real(kind=kind_phys)                   :: zf, fri, ff, dx_factor
 !
     cf(:) = 0.
 !-----------------------------------------------------------------------------------------------------------------
@@ -709,6 +709,7 @@
 !   24 August 25 (hong@ucar.edu)
 !
     if ( (if_kim_tofd) .and. varf(i).gt.varf_min ) then
+      dx_factor = varf(i)/(dx(i)/32000.+7./8.)    ! < about the same at 4 km
       zf    = min( varf(i)*tofd_factor,za(i) )
       fri   = min( max( 1.-br(i),0. ), 1.)
       ff    = log( ( za(i) + zf) / zf )
