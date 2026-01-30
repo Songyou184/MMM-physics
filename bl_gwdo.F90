@@ -151,7 +151,7 @@
                         var_min = 10.    ,&  !< minimum of standard deviation [m]
                         hmt_min = 50.    ,&  !< minimum of orographic height  [m]
                         oc_min  = 1.     ,&  !< minimum of convexity
-                        oc_max  = 10.    ,&  !< minimum of convexity 
+                        oc_max  = 10.    ,&  !< maximum of convexity 
                         olmin   = 1.0e-5 ,&  !< minimum of orographic length
                         odmin   = 0.1    ,&  !< minimum of origraphic direction
                         odmax   = 10.    ,&  !< maximum of origraphic direction
@@ -188,7 +188,7 @@
    real(kind=kind_phys), dimension(its:ite,4)         ::                                       &
                          oa4, ol4
 !
-   integer, dimension(its:ite)                        :: kref, komax
+   integer, dimension(its:ite)                        :: kref, komax, kbomax
 !
    real(kind=kind_phys), dimension(its:ite)           ::                                       &
                          delx, dely, dxy, dxyp, olp, od, area
@@ -234,7 +234,7 @@
 ! initialize arrays, array syntax is OK for OpenMP since these are local
 !
    ldrag   = .false. ; icrilv = .false. ; flag    = .true.
-   kref    = 0       ; komax  = 0
+   kref    = 0       ; komax  = 0       ; kbomax = 0
    taufb   = 0.      ; dtaux  = 0.      ; dtauy  = 0.
    xn      = 0.      ; yn     = 0.
    ubar    = 0.      ; vbar   = 0.      ; rhobar  = 0.     ; ulow    = 0.
@@ -290,6 +290,25 @@
      do i = its,ite
        if (flag(i) .and. zl(i,k)>=omax(i)) then
          komax(i) = k+1
+         flag(i)  = .false.
+       endif
+     enddo
+   enddo
+!
+   do i = its,ite
+     komax(i) = max(komax(i),kref(i))
+   enddo
+!
+! kbomax is the starting level computing blocking
+!
+   do i = its,ite
+     flag(i) = .true.
+   enddo
+!
+   do k = kts+1,kte
+     do i = its,ite
+       if (flag(i) .and. zl(i,k)>=(omax(i)+zref(i))) then
+         kbomax(i) = k+1
          flag(i)  = .false.
        endif
      enddo
@@ -538,14 +557,14 @@
        fbdpe = 0.
        fbdke = 0.
        do k = kte, kgwdmin, -1
-         if (kblk==0 .and. k<=komax(i)) then
+         if (kblk==0 .and. k<=kbomax(i)) then
            fbdpe = fbdpe + bnv2(i,k)*(zl(i,komax(i))-zl(i,k))                  &
                    *del(i,k)/g_/rho(i,k)
            fbdke = 0.5*(u1(i,k)**2.+v1(i,k)**2.)
 !
 ! apply flow-blocking drag when fbdpe >= fbdke
 !
-           if (fbdpe>=fbdke) then
+           if (fbdpe>=fbdke .and. k<=komax(i)) then
              kblk = k
              zblk = zl(i,kblk)-zl(i,kts)
            endif
