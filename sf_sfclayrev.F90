@@ -710,7 +710,7 @@
 !
     if ( (if_kim_tofd) .and. varf(i).gt.varf_min ) then
       dx_factor = varf(i)/(dx(i)/32000.+7./8.)    ! < about the same at 4 km
-      zf    = min( varf(i)*tofd_factor,za(i) )
+      zf    = min( varf(i)*dx_factor*tofd_factor,za(i) )
       fri   = min( max( 1.-br(i),0. ), 1.)
       ff    = log( ( za(i) + zf) / zf )
       cf(i) = ca_square / (ff*ff) * fri
