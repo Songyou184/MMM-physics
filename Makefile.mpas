@@ -16,6 +16,7 @@ OBJS = \
 	mp_radar.o \
 	mp_wsm6_effectRad.o \
 	mp_wsm6.o \
+	mp_udm.o \
 	mynn_shared.o \
 	sf_mynn.o \
 	sf_sfclayrev.o \
@@ -37,6 +38,10 @@ mp_wsm6_effectRad.o: \
 	mp_wsm6.o
 
 mp_wsm6.o: \
+	mp_radar.o \
+	module_libmassv.o
+
+mp_udm.o: \
 	mp_radar.o \
 	module_libmassv.o
 
