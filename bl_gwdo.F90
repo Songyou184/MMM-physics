@@ -413,7 +413,6 @@
    enddo
 !
    do i = its,ite
-     ldrag(i) = omax(i) <= hmt_min               ! no drag when too small mtn
      ldrag(i) = ldrag(i) .or. var(i) <= 0.       ! no drag when too small std
      ldrag(i) = ldrag(i) .or. velco(i,1)<=0.     ! no drag when critical level
      ldrag(i) = ldrag(i) .or. ulow(i)==1.0       ! no drag when wind calms
