@@ -329,12 +329,15 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 !!
 !!  history :
 !!        03-04-2026 : CAMS aerosol option added by taeho mun (unist, Korea)
+!!        08-24-2026 : revisions in ice micro physics and ccn activation, and
+!!                     shared physics or ccpp configuration, hong
 !!
 !!  references :
-!!        heymsfield et al(hey, 2018) j. atmos. Sci.
-!!        kim and and hong (kh, 2018) j. atmos. sci.
+!!        hong et al(2026) asia-pac. j. atmos. Sci.
+!!        heymsfield et al(2018) j. atmos. Sci.
+!!        kim and and hong (2018) j. atmos. sci.
 !!        lee and baik (lb2017, 2017) j. atmos. sci.
-!!        juang and hong (jh, 2010) mon. wea. rev.
+!!        juang and hong (2010) mon. wea. rev.
 !!        lim and hong (lh, 2010) mon. wea. rev.
 !!        dudhia, hong and lim (dhl, 2008) j. meteor. soc. japan
 !!        hong and lim (hl, 2006) j. korean meteor. soc.
