@@ -329,15 +329,12 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 !!
 !!  history :
 !!        03-04-2026 : CAMS aerosol option added by taeho mun (unist, Korea)
-!!        08-24-2026 : revisions in ice micro physics and ccn activation, and
-!!                     shared physics or ccpp configuration, hong
 !!
 !!  references :
-!!        hong et al(2026) asia-pac. j. atmos. Sci.
-!!        heymsfield et al(2018) j. atmos. Sci.
-!!        kim and and hong (2018) j. atmos. sci.
+!!        heymsfield et al(hey, 2018) j. atmos. Sci.
+!!        kim and and hong (kh, 2018) j. atmos. sci.
 !!        lee and baik (lb2017, 2017) j. atmos. sci.
-!!        juang and hong (2010) mon. wea. rev.
+!!        juang and hong (jh, 2010) mon. wea. rev.
 !!        lim and hong (lh, 2010) mon. wea. rev.
 !!        dudhia, hong and lim (dhl, 2008) j. meteor. soc. japan
 !!        hong and lim (hl, 2006) j. korean meteor. soc.
@@ -664,7 +661,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 !
    t(:,:) = 0.; q(:,:) = 0.; p(:,:) =0.
    delz(:,:) = 0.; den(:,:) = 0.
-   nifa(:,:) = 0.
+   nifa(:,:) = 0. 
    ktop = kte
    do k = kts, ktop
      do i = its, ite
@@ -708,7 +705,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
      enddo
    enddo
 !
-   if (if_aerosol_activated) then
+   if (if_aerosol_activated) then 
      do i = its, ite
        do k = kts, ktop
          nifa(k,i) = min(max(nifa1(i,k),inpmin),inpmax)
@@ -807,7 +804,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 ! initialize the local variables
 !
    temp = 0.         ; hvalue = 0.       ; htotal = 0. ; source = 0.
-   pcond(:) = 0.     ; pigen(:) = 0.
+   pcond(:) = 0.     ; pigen(:) = 0.     
    praut(:) = 0.     ; psaut(:) = 0.     ; pgaut(:) = 0.
    pidep(:) = 0.     ; psdep(:) = 0.     ; pgdep(:) = 0.
    pracw(:) = 0.     ; praci(:) = 0.     ; pracs(:) = 0.
@@ -817,14 +814,14 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
    psmlt(:) = 0.     ; pgmlt(:) = 0.     ; pseml(:) = 0. ; pgeml(:) = 0.
    prevp(:) = 0.     ; psevp(:) = 0.     ; pgevp(:) = 0.
    denqr(:) = 0.     ; denqs(:) = 0.     ; denqi(:) = 0.
-   denqh(:) = 0.     ; denqg(:) = 0.
+   denqh(:) = 0.     ; denqg(:) = 0.    
    vtr(:)   = 0.     ; vts(:)   = 0.     ; vtg(:)   = 0. ; vti(:)   = 0.
    qrpath   = 0.     ; qspath   = 0.     ; qgpath   = 0. ; qipath   = 0.
    precip_r = 0.     ; precip_s = 0.     ; precip_g = 0. ; precip_i = 0.
    satrdt(:)= 0.     ; supsat(:)= 0.     ; supice(:)= 0.
    ifsat(:) = .false.; ifice(:) =.false.
    ni(:)   = 1.e3    ; mi(:)    = 0.     ; cldf(:) = 1.
-   sumice(:) = 0.    ; vtmean(:) = 0.
+   sumice(:) = 0.    ; vtmean(:) = 0. 
    n0gfac(:) = 0.    ; n0hfac(:) = 0.   ; n0sfac(:) = 0.
    tc(:)     = 0.    ; tw(:)     = 0.   ; dend(:)   = 0. ; denfac(:) = 0.
    tstepsnow = 0.    ; tstepgraupel = 0. ; tstephail = 0.
@@ -837,7 +834,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
    ngeml(:) = 0.     ; nracw(:) = 0.     ;  nccol(:) = 0.  ; nrcol(:) = 0.
    ncact(:) = 0.     ; nraut(:) = 0.     ;  ncevp(:) = 0.  ; denqn(:) = 0.
    vtn(:)   = 0.     ; dc(:)  = 0.       ;  dr(:) = 0.     ; di(:)  = 0.
-   qrcon(:)= 0.      ; qrconcr(:) = 0.   ;  taucon(:) = 0.
+   qrcon(:)= 0.      ; qrconcr(:) = 0.   ;  taucon(:) = 0. 
    qnpath = 0.       ; sfac = 0.         ;  gfac = 0.
    nfrzdtc = 0.      ; nfrzdtr = 0.
    phdep(:)= 0.      ; phaut(:) = 0.   ; pracg(:) = 0. ; phacw(:) = 0.
@@ -846,11 +843,11 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
    pvapg(:)= 0.      ; pvaph(:) = 0.   ; pgwet(:) = 0. ; phwet(:) = 0.
    pgaci_w(:)= 0.    ; phaci_w(:) = 0. ; qhpath = 0.   ; vth(:) = 0.
    nhacw(:) = 0.     ; nhacr(:) = 0.   ; nheml(:)= 0.  ; precip_h = 0.
-   ncaut(:) = 0.     ; L_qc = .true.   ; n0c = 0.        ; n0csq = 0.
+   ncaut(:) = 0.     ; L_qc = .true.   ; n0c = 0.        ; n0csq = 0. 
    L_c = 0.          ; n_c = 0.        ; lamc = 0.       ; nu_c = 0
    gamma1(:) = 0.    ; qc_tot = 0.     ; qc_sub = 0.     ; qc_aut = 0.
    nc_tot = 0.       ; nc_sub = 0.     ; nc_aut = 0.     ; nr_aut = 0.
-   dis(:)   = 0.     ; vtis(:)   = 0.
+   dis(:)   = 0.     ; vtis(:)   = 0.  
 !-------------------------------------------------------------------------------
 ! compute local variables
 !
@@ -1257,9 +1254,9 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
          L_qc = .true.
          L_c = qci(k,i,1)*den(k,i)
          n_c = max(min(ncr(k,i,2),1.e12),2.)
-         nu_c = min(nint(1.e9/n_c)+2,15)
+         nu_c = min(nint(1.e9/n_c)+2,15) 
          lamc = max(min((n_c*pidnc*8.d0*ccg(nu_c)*ocg1(nu_c)/L_c)**obmr1,      &
-                lamdacmax),lamdacmin)
+                dble(lamdacmax)),dble(lamdacmin))
        else
          L_qc = .false.
          L_c = qcmin
@@ -1896,12 +1893,12 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 !-------------------------------------------------------------------------------
 ! pigen: generation(nucleation) of ice from vapor [hl a50] [hdc 7-8]
 !       (t<t0: v->i)
-   ktop = ktoprh
+   ktop = ktoprh 
    do k = ktop, kts, -1
      if(ifice(k)) then
        if(supsat(k)>0 .and. (.not.ifsat(k))) then
          supice(k) = satrdt(k)-prevp(k)-pidep(k)-psdep(k)-pgdep(k)-phdep(k)
-         if (if_aerosol_activated) then
+         if (if_aerosol_activated) then 
            ni0(k) = iceDeMott(tc(k), den(k,i), nifa(k,i))
            ni0(k) = min(ni0(k),inpmax)
            roqi0 = mi0 * ni0(k)
@@ -2236,7 +2233,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
        htotal = -(prevp(k)+psdep(k)+pgdep(k)+pigen(k)+pidep(k)+phdep(k))
        q(k,i) = q(k,i) + htotal*dtcld
        htotal = (praut(k)+pracw(k)+paacw(k)+paacw(k)+phacw(k))*dtcld
-       qci(k,i,1) = max(qci(k,i,1)-htotal, 0.)
+       qci(k,i,1) = max(qci(k,i,1)-htotal, 0.) 
        htotal =    (praut(k)+pracw(k)                                          &
                    +prevp(k)-piacr(k)-pgacr(k)-psacr(k)-phacr(k))*dtcld
        qrs(k,i,1) = max(qrs(k,i,1)+htotal, 0.)
@@ -2791,7 +2788,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
    implicit none
 !
    integer,              intent(in   ) :: kdim, ktop
-   real(kind=kind_phys), intent(in   ) :: t0c, den0
+   real(kind=kind_phys), intent(in   ) :: t0c, den0 
    real(kind=kind_phys), dimension(kdim), &
         intent(in   ) ::                                                       &
                                                                           qrs, &
@@ -2806,12 +2803,9 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
                                                                       rslope2, &
                                                                       rslope3, &
                                                                            vt
-  real(kind=kind_phys)       ::  lamda, lamdar1m, lamdar2m, x, y, z, hvalue
+  real(kind=kind_phys)       ::  lamda, hvalue
   integer :: k
 !-------------------------------------------------------------------------------
-!  size distributions: (x=mixing ratio, y=air density):
-   lamdar2m(x,y,z)= exp(log(((pidnr*z)/(x*y)))*((.33333333)))
-   lamdar1m(x,y)=   exp(log(pidn0r/(x*y))*(0.25))      ! (pidn0r/(x*y))**.25
 !
    do k = 1,ktop
      if(qrs(k)<=qrmin .or. ncr(k)<=nrmin ) then
@@ -2828,6 +2822,16 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
      endif
      vt(k) = pvtr*rslopeb(k)*denfac(k)
    enddo
+!  size distributions: (x=mixing ratio, y=air density):
+   contains 
+   elemental real function lamdar2m(x, y, z)
+       real, intent(in) :: x, y, z
+       lamdar2m = exp(log(((pidnr * z) / (x * y))) * (0.33333333))
+   end function lamdar2m
+   elemental real function lamdar1m(x, y)
+       real, intent(in) :: x, y
+       lamdar1m = exp(log(((pidn0r) / (x * y))) * (0.25))
+   end function lamdar1m
 end subroutine slope_rain
 !-------------------------------------------------------------------------------
 !
@@ -2856,13 +2860,10 @@ end subroutine slope_rain
                                                                            vt
    real(kind=kind_phys), dimension( kdim ) ::                                  &
                                                                        n0gfac
-  real(kind=kind_phys)       ::  lamda, lamdag, x, y, z, tc, hvalue
+  real(kind=kind_phys)       ::  lamda, tc, hvalue
   integer :: k
 !----------------------------------------------------------------
 !-------------------------------------------------------------------------------
-!     size distributions: (x=mixing ratio, y=air density):
-   lamdag(x,y,z)= exp(log((pidn0g*z)/(x*y))*(0.25))  ! (pidn0g*z/(x*y))**.25
-!
    n0gfac(:) = 0.0
    do k = 1, ktop
      tc = t(k) - t0c
@@ -2883,6 +2884,12 @@ end subroutine slope_rain
      endif
      vt(k) = pvtg*rslopeb(k)*denfac(k)
    enddo
+!  size distributions: (x=mixing ratio, y=air density):
+   contains 
+   elemental real function lamdag(x, y, z)
+       real, intent(in) :: x, y, z
+       lamdag = exp(log(((pidn0g * z) / (x * y))) * (0.25))
+   end function lamdag
 end subroutine slope_graupel
 !-------------------------------------------------------------------------------
 !
@@ -2911,12 +2918,9 @@ end subroutine slope_graupel
                                                                            vt
    real(kind=kind_phys), dimension(kdim ) ::                                   &
                                                                        n0hfac
-  real(kind=kind_phys)       ::  lamda, lamdah, x, y, z, tc, hvalue
+  real(kind=kind_phys)       ::  lamda, tc, hvalue
   integer ::  k
 !-------------------------------------------------------------------------------
-!     size distributions: (x=mixing ratio, y=air density):
-   lamdah(x,y,z)= exp(log((pidn0h*z)/(x*y))*(0.25))  ! (pidn0h*z/(x*y))**.25
-!
    n0hfac(:) = 0.0
      do k = 1, ktop
        tc = t(k) - t0c
@@ -2937,6 +2941,12 @@ end subroutine slope_graupel
        endif
        vt(k) = pvth*rslopeb(k)*denfac(k)
      enddo
+!  size distributions: (x=mixing ratio, y=air density):
+   contains 
+   elemental real function lamdah(x, y, z)
+       real, intent(in) :: x, y, z
+       lamdah = exp(log(((pidn0h * z) / (x * y))) * (0.25))
+   end function lamdah
 end subroutine slope_hail
 !-------------------------------------------------------------------------------
 !
@@ -2961,11 +2971,9 @@ end subroutine slope_hail
                                                                        rslope, &
                                                                       rslope2, &
                                                                       rslope3
-  real(kind=kind_phys)       ::  lamda, lamdac, x, y, z, tc, qmin
+  real(kind=kind_phys)       ::  lamda, tc, qmin
   integer ::  k
 !-------------------------------------------------------------------------------
-!  size distributions: (x=mixing ratio, y=air density):
-   lamdac(x,y,z)= exp(log(((pidnc*z)/(x*y)))*((.33333333)))
 !
    do k = 1,ktop
      if(qrs(k)<=qmin .or. ncr(k)<=ncmin )then
@@ -2979,6 +2987,12 @@ end subroutine slope_hail
        rslope3(k) = rslope2(k)*rslope(k)
      endif
    enddo
+!  size distributions: (x=mixing ratio, y=air density):
+   contains 
+   elemental real function lamdac(x, y, z)
+       real, intent(in) :: x, y, z
+       lamdac = exp(log(((pidnc * z) / (x * y))) * (0.33333333))
+   end function lamdac
 end subroutine slope_cloud
 !-------------------------------------------------------------------------------
 !
@@ -3006,12 +3020,9 @@ subroutine slope_snow(kdim, ktop, qrs, den, denfac, t, rslope, rslopeb,        &
                                                                            vt
    real(kind=kind_phys), dimension( kdim ) ::                                   &
                                                                        n0sfac
-   real(kind=kind_phys)       ::  lamda, lamdas, x, y, z, tc, hvalue
+   real(kind=kind_phys)       ::  lamda, tc, hvalue
    integer ::  k
 !-------------------------------------------------------------------------------
-!     size distributions: (x=mixing ratio, y=air density):
-   lamdas(x,y,z)= exp(log((pidn0s*z)/(x*y))*(0.25))  ! (pidn0s*z/(x*y))**.25
-!
    n0sfac(:) = 0.0
    do k = 1, ktop
      tc = t(k) - t0c
@@ -3035,6 +3046,12 @@ subroutine slope_snow(kdim, ktop, qrs, den, denfac, t, rslope, rslopeb,        &
      endif
      vt(k) = pvts*rslopeb(k)*denfac(k)
    enddo
+!  size distributions: (x=mixing ratio, y=air density):
+   contains 
+   elemental real function lamdas(x, y, z)
+       real, intent(in) :: x, y, z
+       lamdas = exp(log(((pidn0s * z) / (x * y))) * (0.25))
+   end function lamdas
 end subroutine slope_snow
 !-------------------------------------------------------------------------------
 !
@@ -3624,8 +3641,8 @@ subroutine udm_mp_effective_radius (t, qc, qi, qs, rho, qmin, t0c,             &
    real(kind=kind_phys) :: lamdac
    real(kind=kind_phys) :: tc, n0sfac, lamdas
    real(kind=kind_phys) :: di      ! diameter of ice in m
+   real(kind=kind_phys) :: lamc
    real(kind=kind_phys) :: bfactor, bfactor2, bfactor3
-   double precision :: lamc
    logical :: has_qc, has_qi, has_qs
 !..minimum microphys values
    real(kind=kind_phys), parameter :: r1 = 1.e-12
@@ -3735,7 +3752,7 @@ subroutine udm_mp_reflectivity (qv1d, qr1d, qs1d, qg1d,                        &
       l_qr = .false. ;  l_qs = .false. ;  l_qg = .false. ;  l_qh = .false.
 !
       ze_rain(:) = 0. ;  ze_snow(:) = 0. ;  ze_graupel(:) = 0.
-      fmelt_s = 0. ; fmelt_g = 0.
+      fmelt_s = 0. ; fmelt_g = 0. 
       ze_hail(:) = 0. ; fmelt_h = 0.
 !
       melti = .false.
@@ -4107,7 +4124,7 @@ end subroutine udm_mp_reflectivity
   (/a_aut, 1+a_aut, 1-2*a_aut, -2-2*a_aut, -2+a_aut, 1+a_aut,1.0d0/)
    integer :: n, nn, nu_c
 !
-   gamma1(:) = 0. ; gamma2(:) = 0.
+   gamma1(:) = 0. ; gamma2(:) = 0. 
    exp1(:) = 0.   ; exp2(:) = 0. ; exp3(:) = 0. ; err1(:) = 0.; err2(:) = 0.
    term = 0.      ; temp11 = 0.0 ; temp12 = 0.  ; temp21 = 0. ; temp22 = 0.
 !
@@ -4222,8 +4239,8 @@ end subroutine udm_mp_reflectivity
    integer  ::  jx
    real     ::  xj
 !
-   xj = min(max(c1xaut+c2xaut*d,1.d0),real(nxaut))
-   jx = min(xj,nxaut-1.d0)
+   xj = min(max(c1xaut+c2xaut*d,1.d0), dble(nxaut))
+   jx = min(xj, nxaut -1.)
    funct_aut_qc_tot = tbaut_qc_tot(jx,nu)+(xj-jx)*(tbaut_qc_tot(jx+1,nu)       &
                      -tbaut_qc_tot(jx,nu))
 !
@@ -4255,8 +4272,8 @@ end subroutine udm_mp_reflectivity
    integer  ::  jx
    real     ::  xj
 !
-   xj = min(max(c1xaut+c2xaut*d,1.d0),real(nxaut))
-   jx = min(xj,nxaut-1.d0)
+   xj = min(max(c1xaut+c2xaut*d,1.d0),dble(nxaut))
+   jx = min(xj, nxaut -1.)
    funct_aut_qc_sub = tbaut_qc_sub(jx,nu)+(xj-jx)*(tbaut_qc_sub(jx+1,nu)       &
                      -tbaut_qc_sub(jx,nu))
 !
@@ -4288,8 +4305,8 @@ end subroutine udm_mp_reflectivity
    integer  ::  jx
    real     ::  xj
 !
-   xj = min(max(c1xaut+c2xaut*d,1.d0),real(nxaut))
-   jx = min(xj,nxaut-1.d0)
+   xj = min(max(c1xaut+c2xaut*d,1.d0),dble(nxaut))
+   jx = min(xj, nxaut -1.)
    funct_aut_nc_tot = tbaut_nc_tot(jx,nu)+(xj-jx)*(tbaut_nc_tot(jx+1,nu)       &
                      -tbaut_nc_tot(jx,nu))
 !
@@ -4321,8 +4338,8 @@ end subroutine udm_mp_reflectivity
    integer  ::  jx
    real     ::  xj
 !
-   xj = min(max(c1xaut+c2xaut*d,1.d0),real(nxaut))
-   jx = min(xj,nxaut-1.d0)
+   xj = min(max(c1xaut+c2xaut*d,1.d0),dble(nxaut))
+   jx = min(xj, nxaut -1.)
    funct_aut_nc_sub = tbaut_nc_sub(jx,nu)+(xj-jx)*(tbaut_nc_sub(jx+1,nu)       &
                      -tbaut_nc_sub(jx,nu))
 !
@@ -4493,7 +4510,7 @@ end subroutine udm_mp_reflectivity
 !
 !
 !-------------------------------------------------------------------------------
-      real function iceDeMott(tc, den, nifa)
+      real function iceDeMott(tc, den, nifa) 
       implicit none
       REAL, INTENT(IN):: tc, nifa, den
       REAL:: xni, nifa_cc, hvalue
@@ -4510,7 +4527,7 @@ end subroutine udm_mp_reflectivity
                  * (nifa_cc**((-0.0264*(hvalue))+0.0033)) ! to n(IN,Tk) (unit:std/L at Tk)
       xni = xni*den/rho_not0*1000. ! (unit:std/L at Tk) to (unit:#/m3)
       iceDeMott = MAX(inpmin, xni)
-      end FUNCTION iceDeMott
+      end FUNCTION iceDeMott 
 !-------------------------------------------------------------------------------
 !
 !
