@@ -11,12 +11,16 @@
 !>\section arg_table_bl_shinhong_init
 !!\html\include bl_shinhong_init.html
 !!
- subroutine bl_shinhong_init(errmsg,errflg)
+ subroutine bl_shinhong_init(errmsg,errflg,tke, kms, kme, ims, ime)
 !===============================================================================
+ integer, intent (in) :: kms, kme, ims, ime
+ real, dimension( kms:kme, ims:ime ), intent(inout) :: &
+                                                       tke
 !--- output arguments:
  character(len=*),intent(out):: errmsg
  integer,intent(out):: errflg
 !-------------------------------------------------------------------------------
+ tke(:,:) = 1.e-10
  errmsg = 'bl_shinhong_init OK'
  errflg = 0
  end subroutine bl_shinhong_init
@@ -293,8 +297,8 @@
    real(kind=kind_phys)    ::  mlfrac,ezfrac,sfcfracn
    real(kind=kind_phys)    ::  uwst,uwstx,csfac
    real(kind=kind_phys)    ::  prnumfac,bfx0,hfx0,qfx0,delb,dux,dvx,           &
-               dsdzu,dsdzv,wm3,dthx,dqx,wspd10,ross,tem1,dsig,tvcon,conpr,     &
-               prfac,prfac2,phim8z,radsum,ent_eff,radflx,hvalue,tau0
+               dsdzu,dsdzv,wm3,wm3_scu,dthx,dqx,wspd10,ross,tem1,dsig,tvcon,   &
+               conpr,prfac,prfac2,phim8z,radsum,ent_eff,radflx,hvalue,tau0
    real(kind=kind_phys)    :: evp_fac,tlix,rvls,temps, rcldb,bruptmp
 !
    integer,  dimension( its:ite )            ::                     kpbl, kcld
@@ -656,6 +660,7 @@
      do i = its,ite
        zfac(i,k) = 0.0
        zfac2(i,k) = 0.0
+       zfacent(i,k) = 0.0
      enddo
    enddo
    do k = kts,kte+1
@@ -979,6 +984,7 @@
    do i = its,ite
      cloudflg(i)=.false.
      if(pblflg(i)) then
+       wm3 = 0.; wm3_scu = 0.
        k = kpbl(i) - 1
        wm3       = wstar3(i) + 5.*ust3(i)
        wm2(i)    = wm3**h2
@@ -1002,7 +1008,7 @@
                      - (thlix(i,k) + thx(i,k)  *ep1*(qvx(i,k)  +qcxl(i,k)))
            dthvx(i)  = max(dthvx(i),0.1)
            evp_fac   = xlv/cp * rcldb/(pi2d(i,k)*dthvx(i))
-           ent_eff   = min(0.2 * (1.+8.*evp_fac),scu_ent_max)
+           ent_eff   = min(0.2*8.*evp_fac,scu_ent_max)
 !
            radsum = 0.
            do kk = 1,k
@@ -1022,11 +1028,11 @@
 !
            !entrainment from PBL top thermals
            bfx0 = max(radsum/rhox2(i,k)/cp,0.)
-           wm3       = (g/thvx(i,k)*bfx0*hpbl(i)) ! this is wstar3(i)
-           wm2(i)    = wm2(i)+wm3**h2
+           wm3_scu   = (g/thvx(i,k)*bfx0*hpbl(i)) ! this is wstar3(i)
+           wm2(i)    = wm2(i)+wm3_scu**h2
            bfxpbl(i) = - ent_eff * bfx0
            dthvx(i)  = max(thvx(i,k+1)-thvx(i,k),0.1)
-           we(i) = we(i) + max(bfxpbl(i)/dthvx(i),-sqrt(wm3**h2))
+           we(i) = we(i) + max(bfxpbl(i)/dthvx(i),-sqrt(wm3_scu**h2))
 !
            !wstar3_2
            wstar3_2(i) =  (g/thvx(i,k)*bfx0*hpbl(i))
@@ -1071,7 +1077,14 @@
        else
          vfxpbl(i) = 0.0
        endif
-       if (if_shinhong_nonlocal_flux) then
+       delb  = govrth(i)*d3*hpbl(i)
+       delta(i) = min(d1*hpbl(i) + d2*wm2(i)/delb,100.)
+     endif
+   enddo
+!
+   if (if_shinhong_nonlocal_flux) then
+     do i = its,ite
+       if (pblflg(i)) then
 !
 !  entrainment depth (delta_sh) is explicitly defined by SH 15 (fig.2c)
 !
@@ -1080,21 +1093,18 @@
 !
 !  entrainment ratio is a function of surface fluxes (moeng and sullivan 1994)
 !
-         entfrac(i) = cent * fent * min(wm3/wstar3(i),2.)
+         hvalue = 1. + 5.*ust3(i)/max(wstar3(i),1.e-6)
+         entfrac(i) = cent * fent * min(hvalue,2.)
+         do k = kts,klpbl
+           entfacmf(i,k) = sqrt(((zq(i,k+1)-hpbl(i))/delta_sh(i))**2.)
+         enddo
        endif
-       delb  = govrth(i)*d3*hpbl(i)
-       delta(i) = min(d1*hpbl(i) + d2*wm2(i)/delb,100.)
-     endif
-   enddo
+     enddo
+   endif
 !
    do k = kts,klpbl
      do i = its,ite
-       if (if_shinhong_nonlocal_flux) then
-         if(pblflg(i))then
-           entfacmf(i,k) = sqrt(((zq(i,k+1)-hpbl(i))/delta_sh(i))**2.)
-         endif
-       endif
-       if(pblflg(i).and.k >= kpbl(i))then
+       if (pblflg(i) .and. k >= kpbl(i)) then
          entfac(i,k) = ((zq(i,k+1)-hpbl(i))/delta(i))**2.
        else
          entfac(i,k) = 1.e30
@@ -1199,6 +1209,7 @@
 !  prescribe nonlocal heat transport below pbl (sh15)
 !
      do i = its,ite
+     if (pblflg(i)) then
        mlfrac      = mltop-deltaoh(i)
        ezfrac      = mltop+deltaoh(i)
        zfacmf(i,1) = min(max((zq(i,2)/hpbl(i)),zfmin),1.)
@@ -1207,7 +1218,7 @@
        sflux0      = (a11+a12*sfcfracn)*sflux(i)
        snlflux0    = nlfrac*sflux0
        amf1        = snlflux0/sfcfracn
-       if (pblflg(i).and.sflux(i) > 0.) then
+       if (sflux(i) > 0.) then
          amf2      = -snlflux0/(mlfrac-sfcfracn)
          bmf2      = -mlfrac*amf2
          amf3      = snlflux0*entfrac(i)/deltaoh(i)
@@ -1229,6 +1240,7 @@
 !!!           mf(i,k) = mf(i,k)*pth1
          endif
        enddo
+         endif
      enddo
    endif
 !
@@ -1261,6 +1273,7 @@
            hvalue = mf(i,k)/xkzh(i,k)
          else
            hvalue = hgamt(i)/hpbl(i)+hfxpbl(i)*zfacent(i,k)/xkzh(i,k)
+           mf(i,k) = hvalue * xkzh(i,k)
          endif
          dsdzt = tem1*(-hvalue*pth1)
          f1(i,k)   = f1(i,k)+dtodsd*dsdzt
@@ -1436,7 +1449,8 @@
    do k = kts,kte
      do i = its,ite
        if(pblflg(i).and.k < kpbl(i)) then
-         hgame_c=c_1*0.2*2.5*(g/thvx(i,k))*wstar(i)/(0.25*(q2x(i,k+1)+q2x(i,k)))
+         hgame_c=c_1*0.2*2.5*(g/thvx(i,k))*wstar(i)                            &
+                 /max(0.5*q2x(i,k),0.01)
          hgame_c=min(hgame_c,gamcre)
          if(k == kte)then
            hgame2d(i,k)=hgame_c*0.5*tvflux_e(i,k)*hpbl(i)
@@ -1701,7 +1715,7 @@
        txk(k)   = tx(i,k)
        thxk(k)  = thx(i,k)
        thvxk(k) = thvx(i,k)
-       q2xk(k)  = q2x(i,k)
+       q2xk(k)  = max(q2x(i,k),0.0001)
        hgame(k) = hgame2d(i,k)
      enddo
 !
@@ -1770,7 +1784,7 @@
 !---- save the new tke and mixing length.
 !
      do k = kts,kte
-       q2x(i,k) = amax1(q2xk(k),epsq2l)
+       q2x(i,k) = max(q2xk(k),epsq2l)
        tke(i,k) = 0.5*q2x(i,k)
        if(k/=kts) el_pbl(i,k) = el(k) ! el is not defined at kte
      enddo
@@ -1786,7 +1800,7 @@
      kpbl1d(i) = kpbl(i)
    enddo
 !
-   errmsg = 'bl_ysu_run OK'
+   errmsg = 'bl_shinhong_run OK'
    errflg = 0
    end subroutine bl_shinhong_run
 !-------------------------------------------------------------------------------
@@ -2255,7 +2269,7 @@
    main_integration: do k = kts+1,kte
      deltaz=0.5*(z(k+1)-z(k-1))
      s2l=s2(k)
-     q2l=q2(k)
+     q2l=max(q2(k),epsq2l)
      suk=(uxk(k)-uxk(k-1))/deltaz
      svk=(vxk(k)-vxk(k-1))/deltaz
      gthvk=(thvxk(k)-thvxk(k-1))/deltaz
@@ -2287,10 +2301,11 @@
 !  dissipation
 !
      disel=min(delxy,ceps*el(k))
+     disel=max(disel,0.01)
      dis=(q2l)**1.5/disel
 !
      q2l=q2l+2.0*(pr-bpr-dis)*dtturbl
-     q2(k)=amax1(q2l,epsq2l)
+     q2(k)=max(q2l,epsq2l)
 !
 !  end of production/dissipation loop
 !
@@ -2298,7 +2313,7 @@
 !
 !  lower boundary condition for q2
 !
-   q2(kts)=amax1(rc02*ustar*ustar,epsq2l)
+   q2(kts)=max(rc02*ustar*ustar,epsq2l)
 !
    end subroutine prodq2
 !-------------------------------------------------------------------------------
