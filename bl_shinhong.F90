@@ -1209,38 +1209,37 @@
 !  prescribe nonlocal heat transport below pbl (sh15)
 !
      do i = its,ite
-     if (pblflg(i)) then
-       mlfrac      = mltop-deltaoh(i)
-       ezfrac      = mltop+deltaoh(i)
-       zfacmf(i,1) = min(max((zq(i,2)/hpbl(i)),zfmin),1.)
-       sfcfracn    = max(sfcfracn1,zfacmf(i,1))
+       if (pblflg(i)) then
+         mlfrac      = mltop-deltaoh(i)
+         ezfrac      = mltop+deltaoh(i)
+         zfacmf(i,1) = min(max((zq(i,2)/hpbl(i)),zfmin),1.)
+         sfcfracn    = max(sfcfracn1,zfacmf(i,1))
 !
-       sflux0      = (a11+a12*sfcfracn)*sflux(i)
-       snlflux0    = nlfrac*sflux0
-       amf1        = snlflux0/sfcfracn
-       if (sflux(i) > 0.) then
-         amf2      = -snlflux0/(mlfrac-sfcfracn)
-         bmf2      = -mlfrac*amf2
-         amf3      = snlflux0*entfrac(i)/deltaoh(i)
-       else
-         amf3      = 0.
-       endif
-       bmf3        = -amf3*mlfrac
-       hfxpbl_sh(i)   = amf3+bmf3
+         sflux0      = (a11+a12*sfcfracn)*sflux(i)
+         snlflux0    = nlfrac*sflux0
+         amf1        = snlflux0/sfcfracn
+         if (sflux(i) > 0.) then
+           amf2      = -snlflux0/(mlfrac-sfcfracn)
+           bmf2      = -mlfrac*amf2
+           amf3      = snlflux0*entfrac(i)/deltaoh(i)
+         else
+           amf3      = 0.
+         endif
+         bmf3        = -amf3*mlfrac
+         hfxpbl_sh(i)   = amf3+bmf3
 !
-       do k = kts,klpbl
-         zfacmf(i,k) = max((zq(i,k+1)/hpbl(i)),zfmin)
-         if(pblflg(i).and.k < kpbl(i)) then
-           if(zfacmf(i,k) <= sfcfracn) then
-             mf(i,k) = amf1*zfacmf(i,k)
-           else if (zfacmf(i,k) <= mlfrac) then
-             mf(i,k) = amf2*zfacmf(i,k)+bmf2
+         do k = kts,klpbl
+           zfacmf(i,k) = max((zq(i,k+1)/hpbl(i)),zfmin)
+           if(pblflg(i).and.k < kpbl(i)) then
+             if(zfacmf(i,k) <= sfcfracn) then
+               mf(i,k) = amf1*zfacmf(i,k)
+             else if (zfacmf(i,k) <= mlfrac) then
+               mf(i,k) = amf2*zfacmf(i,k)+bmf2
+             endif
+             mf(i,k) = mf(i,k)+hfxpbl_sh(i)*exp(-entfacmf(i,k))
            endif
-           mf(i,k) = mf(i,k)+hfxpbl_sh(i)*exp(-entfacmf(i,k))
-!!!           mf(i,k) = mf(i,k)*pth1
-         endif
-       enddo
-         endif
+         enddo
+       endif
      enddo
    endif
 !
