@@ -5,11 +5,7 @@
 !! author Songyou Hong [hong@ucar.edu, songyouhong@gmail.com]
 !!
   module mp_udm
-#if defined(mpas)
    use mp_radar
-#else
-   use module_mp_radar
-#endif
    use ccpp_kind_types,only: kind_phys
    implicit none
    public :: mp_udm_init, mp_udm_run, mp_udm_finalize
@@ -2658,7 +2654,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
        hvalue = (den(k,i)*max(qci(k,i,2),qcmin))
        hvalue = exp(log(hvalue)*0.75)
        ni(k) = min(max(5.38e7*hvalue,1.e3),1.e6)
-       if(qci(k,i,2)<=0.0) then
+       if(qci(k,i,2) <= qcmin) then
          vti(k) = 0.
        else
          mi(k)  = den(k,i)*qci(k,i,2)/ni(k)
