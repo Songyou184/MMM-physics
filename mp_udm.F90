@@ -220,36 +220,20 @@ contains
 !!
 !-------------------------------------------------------------------------------
       subroutine mp_udm_init(den0,denr,dens,cl,cv,ccn0, &
-                  nwfa2d, nwfa, nifa, if_aerosol_aware,              &
-                          ids, ide, jds, jde, kds, kde,              &
-                          ims, ime, jms, jme, kms, kme,              &
-                          its, ite, jts, jte, kts, kte)
+                                        if_aerosol_aware,f_nwfa,f_nifa)
          implicit none
-  integer,           intent(in   ) :: ids,ide, jds,jde, kds,kde ,    &
-                                      ims,ime, jms,jme, kms,kme ,    &
-                                      its,ite, jts,jte, kts,kte
    real, intent(in) :: den0,denr,dens,cl,cv,ccn0
    logical,          intent(in   ) :: if_aerosol_aware
 !
-         integer :: i, k
-   real, dimension( ims:ime, kms:kme, jms:jme ), intent(inout),      &
-                                                      optional ::    &
-                                                            nwfa,    &
-                                                            nifa
-   real, dimension( ims:ime, jms:jme ), intent(in), optional ::      &
-                                                          nwfa2d
+   logical ::          if_aerosol_data, f_nwfa, f_nifa
 !
-!  local
-!
-   logical ::          if_aerosol_data
-!
-   if_aerosol_data = .true.
+   if_aerosol_data = .false.
    if_aerosol_activated = .false.
 !
 ! check aerosol option
 !
-   if ((.not.PRESENT(nwfa)) .or. (.not.PRESENT(nifa)))               &
-           if_aerosol_data = .false.
+   if (f_nwfa .and. f_nifa)                                          &
+           if_aerosol_data = .true.
 !
    if_aerosol_activated = if_aerosol_aware .and. if_aerosol_data
 !
