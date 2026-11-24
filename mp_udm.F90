@@ -38,9 +38,9 @@
           cxmi   = (1./11.9)**2,&!< a constant for mass of hexagonal ice
           dxmi   = 2.0     ,&    !< a constant for mass of hexagonal ice
           pi_    = 3.141593,&    !< pi only for ice mass computation
-          deni   = 500.    ,&    !< density of cloud ice                 [kgm-3]
-          avtis  = 2.71e3  ,&    !< a constant for vt of spherical ice
-          bvtis  = 1.0     ,&    !< a constant for vt of spherical ice
+          deni   = 900.    ,&    !< density of cloud ice                 [kgm-3]
+          avtis  = 6.42e5  ,&    !< spherical ice Schiller–Naumann Constants
+          bvtis  = 1.547   ,&    !< spherical ice Schiller–Naumann Constants
           cxmis  = pi_*deni/6.,& !< a constant for mass of spherical ice
           dxmis  = 3.0     ,&    !< a constant for mass of spherical ice
           avtr   = 841.9   ,&    !< a constant for terminal velocity of rain
@@ -106,7 +106,7 @@
    real(kind=kind_phys), parameter, private :: &
           ccn_0   = 50.e+6,   &  !< background ccn                         [m-3]
           ccnmax  = 20000.e+6,&  !< maximum ccn                            [m-3]
-          ccnmin  = 50.e+6       !< minimum ccn                            [m-3]
+          ccnmin  = 2.5e+6        !< minimum ccn                            [m-3]
 !-------------------------------------------------------------------------------
 ! min max  effective radius (m)
 !
@@ -220,36 +220,20 @@ contains
 !!
 !-------------------------------------------------------------------------------
       subroutine mp_udm_init(den0,denr,dens,cl,cv,ccn0, &
-                  nwfa2d, nwfa, nifa, if_aerosol_aware,              &
-                          ids, ide, jds, jde, kds, kde,              &
-                          ims, ime, jms, jme, kms, kme,              &
-                          its, ite, jts, jte, kts, kte)
+                                        if_aerosol_aware,f_nwfa,f_nifa)
          implicit none
-  integer,           intent(in   ) :: ids,ide, jds,jde, kds,kde ,    &
-                                      ims,ime, jms,jme, kms,kme ,    &
-                                      its,ite, jts,jte, kts,kte
-   real, intent(in) :: den0,denr,dens,cl,cv,ccn0
+   real(kind=kind_phys), intent(in) :: den0,denr,dens,cl,cv,ccn0
    logical,          intent(in   ) :: if_aerosol_aware
 !
-         integer :: i, k
-   real, dimension( ims:ime, kms:kme, jms:jme ), intent(inout),      &
-                                                      optional ::    &
-                                                            nwfa,    &
-                                                            nifa
-   real, dimension( ims:ime, jms:jme ), intent(in), optional ::      &
-                                                          nwfa2d
+   logical ::          if_aerosol_data, f_nwfa, f_nifa
 !
-!  local
-!
-   logical ::          if_aerosol_data
-!
-   if_aerosol_data = .true.
+   if_aerosol_data = .false.
    if_aerosol_activated = .false.
 !
 ! check aerosol option
 !
-   if ((.not.PRESENT(nwfa)) .or. (.not.PRESENT(nifa)))               &
-           if_aerosol_data = .false.
+   if (f_nwfa .and. f_nifa)                                          &
+           if_aerosol_data = .true.
 !
    if_aerosol_activated = if_aerosol_aware .and. if_aerosol_data
 !
@@ -328,15 +312,17 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 !!
 !!  history :
 !!        03-04-2026 : CAMS aerosol option added by taeho mun (unist, Korea)
+!!        27-11-2026 : finalize the version for wrf and mpas by hong and dudhia
 !!
 !!  references :
-!!        heymsfield et al(hey, 2018) j. atmos. Sci.
-!!        kim and and hong (kh, 2018) j. atmos. sci.
+!!        hong et al. (h27, 2027) asian-pacific j. atmos. sci.
+!!        heymsfield et al(2018) j. atmos. Sci.
+!!        kim and and hong (2018) j. atmos. sci.
 !!        lee and baik (lb2017, 2017) j. atmos. sci.
-!!        juang and hong (jh, 2010) mon. wea. rev.
-!!        lim and hong (lh, 2010) mon. wea. rev.
-!!        dudhia, hong and lim (dhl, 2008) j. meteor. soc. japan
-!!        hong and lim (hl, 2006) j. korean meteor. soc.
+!!        juang and hong (2010) mon. wea. rev.
+!!        lim and hong (2010) mon. wea. rev.
+!!        dudhia, hong and lim (2008) j. meteor. soc. japan
+!!        hong and lim (2006) j. korean meteor. soc.
 !!        hong, dudhia, and chen (hdc, 2004) mon. wea. rev.
 !!        hong, juang, and zhao (hjz, 1998) mon. wea. rev.
 !!
@@ -557,7 +543,6 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
                                                             pgaci, &
                                                             pgacr, &
                                                             pgacs, &
-                                                            paacw, &
                                                             psmlt, &
                                                             pgmlt, &
                                                             pseml, &
@@ -574,7 +559,6 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
                                                             niacr, &
                                                             nsacr, &
                                                             ngacr, &
-                                                            naacw, &
                                                             nseml, &
                                                             ngeml, &
                                                             ncact
@@ -627,7 +611,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
              ehi, rs0, ghw1, ghw2, ghw3, ghw4, precip_h, qhpath,   &
              qimax, roqi0, lamdar, diameter,                       &
              precip_sum, precip_ice, factor, source, htotal,       &
-             hvalue, pfrzdtc, pfrzdtr,                             &
+             hvalue, hunit, pfrzdtc, pfrzdtr,                      &
              tstepsnow, tstepgraupel, tstephail,                   &
              alpha2, delta2, delta3, dtcfl, dr_embryo,temp
    real(kind=kind_phys)  :: &
@@ -635,7 +619,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
    real(kind=kind_phys), dimension( nlev ) :: &
                                        qrconcr, qrcon, taucon, vtn
    integer :: &
-              nstep, niter, n, lond, latd, i, j, k, loop, loops,    &
+              nstep, niter, n, i, k, loop, loops,                   &
               idim, kdim, ktopini, ktopmax, ktop, ktopqc, ktopqi,   &
               ktopqr, ktopqs, ktopqg, ktopqh, ktoprh
    integer :: its, ite, kts, kte
@@ -660,7 +644,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 !
    t(:,:) = 0.; q(:,:) = 0.; p(:,:) =0.
    delz(:,:) = 0.; den(:,:) = 0.
-   nifa(:,:) = 0. 
+   nifa(:,:) = 0.
    ktop = kte
    do k = kts, ktop
      do i = its, ite
@@ -687,7 +671,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
          qrs(k,i,2) = max(qs1(i,k),0.0)
          qrs(k,i,3) = max(qg1(i,k),0.0)
          qrs(k,i,4) = max(qh1(i,k),0.0)
-         ncr(k,i,1) = min(max(nn1(i,k),ccnmin),ccnmax)
+         ncr(k,i,1) = min(max(nn1(i,k),ccnmin*den(k,i)),ccnmax*den(k,i))
          ncr(k,i,2) = max(nc1(i,k),0.0)
          ncr(k,i,3) = max(nr1(i,k),0.0)
        else
@@ -697,17 +681,17 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
          qrs(k,i,2) = qs1(i,k)
          qrs(k,i,3) = qg1(i,k)
          qrs(k,i,4) = qh1(i,k)
-         ncr(k,i,1) = min(max(nn1(i,k),ccnmin),ccnmax)
+         ncr(k,i,1) = min(max(nn1(i,k),ccnmin*den(k,i)),ccnmax*den(k,i))
          ncr(k,i,2) = nc1(i,k)
          ncr(k,i,3) = nr1(i,k)
        endif
      enddo
    enddo
 !
-   if (if_aerosol_activated) then 
+   if (if_aerosol_activated) then
      do i = its, ite
        do k = kts, ktop
-         nifa(k,i) = min(max(nifa1(i,k),inpmin),inpmax)
+         nifa(k,i) = min(max(nifa1(i,k),inpmin*den(k,i)),inpmax*den(k,i))
        enddo
      enddo
    endif
@@ -802,25 +786,25 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 !-------------------------------------------------------------------------------
 ! initialize the local variables
 !
-   temp = 0.         ; hvalue = 0.       ; htotal = 0. ; source = 0.
-   pcond(:) = 0.     ; pigen(:) = 0.     
+   temp = 0.         ; hvalue = 0.       ; htotal = 0. ; hunit = 1.
+   source = 0.       ; pcond(:) = 0.     ; pigen(:) = 0.
    praut(:) = 0.     ; psaut(:) = 0.     ; pgaut(:) = 0.
    pidep(:) = 0.     ; psdep(:) = 0.     ; pgdep(:) = 0.
    pracw(:) = 0.     ; praci(:) = 0.     ; pracs(:) = 0.
    psacw(:) = 0.     ; psaci(:) = 0.     ; psacr(:) = 0.
    pgacw(:) = 0.     ; pgaci(:) = 0.     ; pgacr(:) = 0. ; pgacs(:) = 0.
-   paacw(:) = 0.     ; piacr(:) = 0.
+   piacr(:) = 0.
    psmlt(:) = 0.     ; pgmlt(:) = 0.     ; pseml(:) = 0. ; pgeml(:) = 0.
    prevp(:) = 0.     ; psevp(:) = 0.     ; pgevp(:) = 0.
    denqr(:) = 0.     ; denqs(:) = 0.     ; denqi(:) = 0.
-   denqh(:) = 0.     ; denqg(:) = 0.    
+   denqh(:) = 0.     ; denqg(:) = 0.
    vtr(:)   = 0.     ; vts(:)   = 0.     ; vtg(:)   = 0. ; vti(:)   = 0.
    qrpath   = 0.     ; qspath   = 0.     ; qgpath   = 0. ; qipath   = 0.
    precip_r = 0.     ; precip_s = 0.     ; precip_g = 0. ; precip_i = 0.
    satrdt(:)= 0.     ; supsat(:)= 0.     ; supice(:)= 0.
    ifsat(:) = .false.; ifice(:) =.false.
    ni(:)   = 1.e3    ; mi(:)    = 0.     ; cldf(:) = 1.
-   sumice(:) = 0.    ; vtmean(:) = 0. 
+   sumice(:) = 0.    ; vtmean(:) = 0.
    n0gfac(:) = 0.    ; n0hfac(:) = 0.   ; n0sfac(:) = 0.
    tc(:)     = 0.    ; tw(:)     = 0.   ; dend(:)   = 0. ; denfac(:) = 0.
    tstepsnow = 0.    ; tstepgraupel = 0. ; tstephail = 0.
@@ -828,12 +812,12 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
    roqi0 = 0.        ; acrfac = 0.       ; ni0(:) = 0.
    qimax = 0.        ; alpha2 = 0.       ; coeres = 0.
    pfrzdtc = 0.      ; pfrzdtr = 0.
-   pcact(:) = 0.     ; nsacw(:) = 0.     ;  ngacw(:) = 0.  ; naacw(:) = 0.
+   pcact(:) = 0.     ; nsacw(:) = 0.     ;  ngacw(:) = 0. 
    niacr(:) = 0.     ; nsacr(:) = 0.     ;  ngacr(:) = 0.  ; nseml(:) = 0.
    ngeml(:) = 0.     ; nracw(:) = 0.     ;  nccol(:) = 0.  ; nrcol(:) = 0.
    ncact(:) = 0.     ; nraut(:) = 0.     ;  ncevp(:) = 0.  ; denqn(:) = 0.
    vtn(:)   = 0.     ; dc(:)  = 0.       ;  dr(:) = 0.     ; di(:)  = 0.
-   qrcon(:)= 0.      ; qrconcr(:) = 0.   ;  taucon(:) = 0. 
+   qrcon(:)= 0.      ; qrconcr(:) = 0.   ;  taucon(:) = 0.
    qnpath = 0.       ; sfac = 0.         ;  gfac = 0.
    nfrzdtc = 0.      ; nfrzdtr = 0.
    phdep(:)= 0.      ; phaut(:) = 0.   ; pracg(:) = 0. ; phacw(:) = 0.
@@ -842,11 +826,11 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
    pvapg(:)= 0.      ; pvaph(:) = 0.   ; pgwet(:) = 0. ; phwet(:) = 0.
    pgaci_w(:)= 0.    ; phaci_w(:) = 0. ; qhpath = 0.   ; vth(:) = 0.
    nhacw(:) = 0.     ; nhacr(:) = 0.   ; nheml(:)= 0.  ; precip_h = 0.
-   ncaut(:) = 0.     ; L_qc = .true.   ; n0c = 0.        ; n0csq = 0. 
+   ncaut(:) = 0.     ; L_qc = .true.   ; n0c = 0.        ; n0csq = 0.
    L_c = 0.          ; n_c = 0.        ; lamc = 0.       ; nu_c = 0
    gamma1(:) = 0.    ; qc_tot = 0.     ; qc_sub = 0.     ; qc_aut = 0.
    nc_tot = 0.       ; nc_sub = 0.     ; nc_aut = 0.     ; nr_aut = 0.
-   dis(:)   = 0.     ; vtis(:)   = 0.  
+   dis(:)   = 0.     ; vtis(:)   = 0.
 !-------------------------------------------------------------------------------
 ! compute local variables
 !
@@ -900,7 +884,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 !-------------------------------------------------------------------------------
 ! obtain in-cloud properties
 !
-   ktop = max(ktopqc,ktopqi)
+   ktop = ktopmax
    call cldf_diag(kdim,t(:,i),p(:,i),q(:,i),qci(:,i,1),qci(:,i,2),             &
         dxmeter(i),cldf(:),ktop)
 !
@@ -913,6 +897,8 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
          qrs(k,i,2) = qrs(k,i,2) / cldf(k)
          qrs(k,i,3) = qrs(k,i,3) / cldf(k)
          qrs(k,i,4) = qrs(k,i,4) / cldf(k)
+         ncr(k,i,2) = ncr(k,i,2) / cldf(k)
+         ncr(k,i,3) = ncr(k,i,3) / cldf(k)
        endif
    enddo
 !-------------------------------------------------------------------------------
@@ -1033,7 +1019,6 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
        if(tw(k)>0. .and. qci(k,i,2)>0.) then
          qci(k,i,1) = qci(k,i,1) + qci(k,i,2)
          t(k,i) = t(k,i) - xlf0/cpm(k)*qci(k,i,2)*cldf(k)
-         qci(k,i,2) = 0.
 !---------------------------------------------------------------
 ! nimlt: instantaneous melting of cloud ice  [lh a18]
 !        (t>t0: ->nc)
@@ -1041,6 +1026,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
          hvalue = sqrt(sqrt(hvalue*hvalue*hvalue))
          ni(k) = min(max(5.38e7*hvalue,1.e3),1.e6)
          ncr(k,i,2) = min(ncr(k,i,2) + ni(k),ncmax)
+         qci(k,i,2) = 0.
        endif
      enddo
    endif
@@ -1119,6 +1105,8 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
        qrs(k,i,2) = qrs(k,i,2) * cldf(k)
        qrs(k,i,3) = qrs(k,i,3) * cldf(k)
        qrs(k,i,4) = qrs(k,i,4) * cldf(k)
+       ncr(k,i,2) = ncr(k,i,2) * cldf(k)
+       ncr(k,i,3) = ncr(k,i,3) * cldf(k)
      endif
    enddo
 !-------------------------------------------------------------------------------
@@ -1159,6 +1147,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 !-------------------------------------------------------------------------------
 ! obtain in-cloud properties
 !
+   ktop = ktopmax
    call cldf_diag(kdim,t(:,i),p(:,i),q(:,i),qci(:,i,1),qci(:,i,2),             &
         dxmeter(i),cldf(:),ktop)
    do k = ktop, kts, -1
@@ -1170,6 +1159,8 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
        qrs(k,i,2) = qrs(k,i,2) / cldf(k)
        qrs(k,i,3) = qrs(k,i,3) / cldf(k)
        qrs(k,i,4) = qrs(k,i,4) / cldf(k)
+       ncr(k,i,2) = ncr(k,i,2) / cldf(k)
+       ncr(k,i,3) = ncr(k,i,3) / cldf(k)
      endif
    enddo
 !-------------------------------------------------------------------------------
@@ -1192,7 +1183,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
    ktop = ktopqi
    do k = ktop, kts, -1
      if(qci(k,i,2)>qcmin) then
-       hvalue   = (den(k,i)*max(qci(k,i,2),qcmin))
+       hvalue   = den(k,i)*qci(k,i,2)
        hvalue   = sqrt(sqrt(hvalue*hvalue*hvalue))
        ni(k)  = min(max(5.38e7*hvalue,1.e3),1.e6)
        mi(k)     = den(k,i)*qci(k,i,2)/ni(k)
@@ -1253,7 +1244,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
          L_qc = .true.
          L_c = qci(k,i,1)*den(k,i)
          n_c = max(min(ncr(k,i,2),1.e12),2.)
-         nu_c = min(nint(1.e9/n_c)+2,15) 
+         nu_c = min(nint(1.e9/n_c)+2,15)
          lamc = max(min((n_c*pidnc*8.d0*ccg(nu_c)*ocg1(nu_c)/L_c)**obmr1,      &
                 dble(lamdacmax)),dble(lamdacmin))
        else
@@ -1363,7 +1354,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 ! nrevp: evaporation/condensation rate of rain   [lh a14]
 !        (nr->nccn)
            if(prevp(k)==-qrs(k,i,1)*rdtcld) then
-             ncr(k,i,1) = min(ncr(k,i,1) + ncr(k,i,3), ccnmax)
+             ncr(k,i,1) = ncr(k,i,1) + ncr(k,i,3)
              ncr(k,i,3) = 0.
            endif
          else
@@ -1507,19 +1498,6 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
        endif
      enddo
    endif
-!-------------------------------------------------------------------------------
-! paacw: accretion of cloud water by averaged snow/graupel
-!        (t<t0: c->g or s, and t>=t0: c->r)
-   ktop = max(ktopqs,ktopqg)
-   do k = ktop, kts, -1
-     if(sumice(k)>qmin) then
-       paacw(k) = (qrs(k,i,2)*psacw(k) + qrs(k,i,3)*pgacw(k))/sumice(k)
-!-------------------------------------------------------------------------------
-! naacw: Accretion of cloud water by averaged snow/graupel
-!        (nc->)
-       naacw(k) = (qrs(k,i,2)*nsacw(k) + qrs(k,i,3)*ngacw(k))/sumice(k)
-     endif
-   enddo
 !
    if(lqh) then
      ktop = ktopqh
@@ -1663,7 +1641,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
                  + 1.0*rslope(k,1)*rslope2(k,4) + .5*rslope3(k,4)
          nhacr(k) = pi*ncr(k,i,3)*n0h*n0hfac(k)*abs(vtmean(k)-vtr(k))*acrfac
          nhacr(k) = nhacr(k)*min(max(0.0,qrs(k,i,4)/qrs(k,i,1)),1.)**2
-         nhacr(k) = min(nhacr(k),ncr(k,i,3)/dtcld)
+         nhacr(k) = min(nhacr(k),ncr(k,i,3)*rdtcld)
        endif
 !-------------------------------------------------------------------------------
 ! phacs: accretion of snow by hail [bht a14]
@@ -1709,7 +1687,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
            pgaci_w(k) = 0.0
          endif
          pgwet(k) = ghw1/ghw2*(precg1*rslope2(k,3)                             &
-                   +precg3*ghw3*exp(log(rslope(k,4))*2.75)                     &
+                   +precg3*ghw3*exp(log(rslope(k,3))*2.75)                     &
                    +ghw4*(pgaci_w(k)+pgacs(k)))
          pgwet(k) = max(pgwet(k), 0.0)
          if(pgacw(k)+pgacr(k)<0.95*pgwet(k)) then
@@ -1746,7 +1724,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
      ktop = ktopqs
      do k = ktop, kts, -1
        if(.not.ifice(k) .and. qrs(k,i,2)>0.) then
-         pseml(k) = min(max(-cliq*tc(k)*(paacw(k)+psacr(k))/xlf0,              &
+         pseml(k) = min(max(-cliq*tc(k)*(psacw(k)+psacr(k))/xlf0,              &
                     -qrs(k,i,2)*rdtcld),0.)
 !-------------------------------------------------------------------------------
 ! nseml: enhanced melting of snow by accretion of water    [lh a29]
@@ -1765,7 +1743,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
      ktop = ktopqg
      do k = ktop, kts, -1
        if(.not.ifice(k) .and. qrs(k,i,3)>0.) then
-         pgeml(k) = min(max(-cliq*tc(k)*(paacw(k)+pgacr(k))/xlf0,              &
+         pgeml(k) = min(max(-cliq*tc(k)*(pgacw(k)+pgacr(k))/xlf0,              &
                    -qrs(k,i,3)*rdtcld),0.)
 !-------------------------------------------------------------------------------
 ! ngeml: enhanced melting of graupel by accretion of water [lh a30]
@@ -1790,7 +1768,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 ! nheml: enhanced melting of graupel by accretion of water [lh a30]
 !         (t>=t0: -> nr)
          if  (qrs(k,i,4)>qrmin) then
-           gfac = rslope(k,4)*n0h/qrs(k,i,4)
+           gfac = rslope(k,4)*n0h*n0hfac(k)/qrs(k,i,4)
            nheml(k) = -gfac*pheml(k)
          endif
        endif
@@ -1892,12 +1870,12 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 !-------------------------------------------------------------------------------
 ! pigen: generation(nucleation) of ice from vapor [hl a50] [hdc 7-8]
 !       (t<t0: v->i)
-   ktop = ktoprh 
+   ktop = ktoprh
    do k = ktop, kts, -1
      if(ifice(k)) then
        if(supsat(k)>0 .and. (.not.ifsat(k))) then
          supice(k) = satrdt(k)-prevp(k)-pidep(k)-psdep(k)-pgdep(k)-phdep(k)
-         if (if_aerosol_activated) then 
+         if (if_aerosol_activated) then
            ni0(k) = iceDeMott(tc(k), den(k,i), nifa(k,i))
            ni0(k) = min(ni0(k),inpmax)
            roqi0 = mi0 * ni0(k)
@@ -2013,7 +1991,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 ! convert the in-cloud source/sink terms to the grd-mean state
 !
 !===============================================================================
-   ktop = max(ktopqc,ktopqi)
+   ktop = ktopmax
    do k = ktop, kts, -1
        if(cldf(k)>0.) then
 ! change in-cloud condensate variables to grid-mean variables
@@ -2023,6 +2001,8 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
          qrs(k,i,2) = qrs(k,i,2) * cldf(k)
          qrs(k,i,3) = qrs(k,i,3) * cldf(k)
          qrs(k,i,4) = qrs(k,i,4) * cldf(k)
+       ncr(k,i,2) = ncr(k,i,2) * cldf(k)
+       ncr(k,i,3) = ncr(k,i,3) * cldf(k)
 ! get grid-mean rates
          praut(k) = praut(k) * cldf(k)
          pracw(k) = pracw(k) * cldf(k)
@@ -2033,7 +2013,6 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
          pgaci(k) = pgaci(k) * cldf(k)
          psacw(k) = psacw(k) * cldf(k)
          pgacw(k) = pgacw(k) * cldf(k)
-         paacw(k) = paacw(k) * cldf(k)
          pracs(k) = pracs(k) * cldf(k)
          pgacr(k) = pgacr(k) * cldf(k)
          pgacs(k) = pgacs(k) * cldf(k)
@@ -2063,6 +2042,20 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
          phwet(k) = phwet(k) * cldf(k)
          pgaci_w(k) = pgaci_w(k) * cldf(k)
          phaci_w(k) = phaci_w(k) * cldf(k)
+         nraut(k) = nraut(k) * cldf(k)
+         nccol(k) = nccol(k) * cldf(k)
+         nrcol(k) = nrcol(k) * cldf(k)
+         nracw(k) = nracw(k) * cldf(k)
+         nsacw(k) = nsacw(k) * cldf(k)
+         ngacw(k) = ngacw(k) * cldf(k)
+         nhacw(k) = nhacw(k) * cldf(k)
+         niacr(k) = niacr(k) * cldf(k)
+         nsacr(k) = nsacr(k) * cldf(k)
+         ngacr(k) = ngacr(k) * cldf(k)
+         nhacr(k) = nhacr(k) * cldf(k)
+         nseml(k) = nseml(k) * cldf(k)
+         ngeml(k) = ngeml(k) * cldf(k)
+         nheml(k) = nheml(k) * cldf(k)
        endif
    enddo
 !===============================================================================
@@ -2083,12 +2076,13 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 ! cloud water
 !
        hvalue = max(qmin,qci(k,i,1))
-       source = (praut(k)+pracw(k)+paacw(k)+paacw(k)+phacw(k))*dtcld
+       source = (praut(k)+pracw(k)+psacw(k)+pgacw(k)+phacw(k))*dtcld
        if (source>hvalue) then
          factor = hvalue/source
          praut(k) = praut(k) * factor
          pracw(k) = pracw(k) * factor
-         paacw(k) = paacw(k) * factor
+         psacw(k) = psacw(k) * factor
+         pgacw(k) = pgacw(k) * factor
          phacw(k) = phacw(k) * factor
        endif
 !
@@ -2127,7 +2121,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 ! snow
 !
        hvalue = max(qmin,qrs(k,i,2))
-       source = - (psdep(k)+psaut(k)-pgaut(k)+paacw(k)+piacr(k)*delta3         &
+       source = - (psdep(k)+psaut(k)-pgaut(k)+psacw(k)+piacr(k)*delta3         &
                 + pvapg(k)+pvaph(k)                                            &
                 + praci(k)*delta3 - pracs(k)*(1.-delta2)                       &
                 + psacr(k)*delta2 + psaci(k)-pgacs(k)-phacs(k))*dtcld
@@ -2136,7 +2130,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
          psdep(k) = psdep(k) * factor
          psaut(k) = psaut(k) * factor
          pgaut(k) = pgaut(k) * factor
-         paacw(k) = paacw(k) * factor
+         psacw(k) = psacw(k) * factor
          piacr(k) = piacr(k) * factor
          praci(k) = praci(k) * factor
          psaci(k) = psaci(k) * factor
@@ -2154,7 +2148,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
        source = - (pgdep(k)+pgaut(k)                                           &
                 + piacr(k)*(1.-delta3) + praci(k)*(1.-delta3)                  &
                 + psacr(k)*(1.-delta2) + pracs(k)*(1.-delta2)                  &
-                + pgaci(k)+paacw(k)+pgacr(k)*delta2+pgacs(k)                   &
+                + pgaci(k)+pgacw(k)+pgacr(k)*delta2+pgacs(k)                   &
                 - pracg(k)*(1.-delta2)-phacg(k)-phaut(k)                       &
                 - pvapg(k)+primh(k))*dtcld
        if (source>hvalue) then
@@ -2165,7 +2159,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
          praci(k) = praci(k) * factor
          psacr(k) = psacr(k) * factor
          pracs(k) = pracs(k) * factor
-         paacw(k) = paacw(k) * factor
+         pgacw(k) = pgacw(k) * factor
          pgaci(k) = pgaci(k) * factor
          pgacr(k) = pgacr(k) * factor
          pgacs(k) = pgacs(k) * factor
@@ -2201,14 +2195,15 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 !     cloud
 !
        hvalue = max(qmin,ncr(k,i,2))
-       source = (nraut(k)+nccol(k)+nracw(k)+naacw(k)+naacw(k)                  &
+       source = (nraut(k)+nccol(k)+nracw(k)+nsacw(k)+ngacw(k)                  &
                +nhacw(k))*dtcld
        if (source>hvalue) then
          factor = hvalue/source
          nraut(k) = nraut(k) * factor
          nccol(k) = nccol(k) * factor
          nracw(k) = nracw(k) * factor
-         naacw(k) = naacw(k) * factor
+         nsacw(k) = nsacw(k) * factor
+         ngacw(k) = ngacw(k) * factor
          nhacw(k) = nhacw(k) * factor
        endif
 !
@@ -2231,8 +2226,8 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 !
        htotal = -(prevp(k)+psdep(k)+pgdep(k)+pigen(k)+pidep(k)+phdep(k))
        q(k,i) = q(k,i) + htotal*dtcld
-       htotal = (praut(k)+pracw(k)+paacw(k)+paacw(k)+phacw(k))*dtcld
-       qci(k,i,1) = max(qci(k,i,1)-htotal, 0.) 
+       htotal = (praut(k)+pracw(k)+psacw(k)+pgacw(k)+phacw(k))*dtcld
+       qci(k,i,1) = max(qci(k,i,1)-htotal, 0.)
        htotal =    (praut(k)+pracw(k)                                          &
                    +prevp(k)-piacr(k)-pgacr(k)-psacr(k)-phacr(k))*dtcld
        qrs(k,i,1) = max(qrs(k,i,1)+htotal, 0.)
@@ -2240,7 +2235,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
                    +phaci(k)                                                   &
                    +psaci(k)+pgaci(k)-pigen(k)-pidep(k))*dtcld
        qci(k,i,2) = max(qci(k,i,2)-htotal, 0.)
-       htotal =    (psdep(k)+psaut(k)+paacw(k)                                 &
+       htotal =    (psdep(k)+psaut(k)+psacw(k)                                 &
                    -pgaut(k)+piacr(k)*delta3 + praci(k)*delta3                 &
                    +pvapg(k)+pvaph(k)-phacs(k)                                 &
                    +psaci(k)-pgacs(k)-pracs(k)*(1.-delta2) + psacr(k)*delta2)  &
@@ -2248,7 +2243,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
        qrs(k,i,2) = max(qrs(k,i,2)+htotal, 0.)
        htotal =    (pgdep(k)+pgaut(k)+piacr(k)*(1.-delta3)                     &
                    +praci(k)*(1.-delta3) + psacr(k)*(1.-delta2)                &
-                   +pracs(k)*(1.-delta2) + pgaci(k)+paacw(k)                   &
+                   +pracs(k)*(1.-delta2) + pgaci(k)+pgacw(k)                   &
                    +pgacr(k)*delta2+pgacs(k)+primh(k)                          &
                    -pracg(k)*(1.-delta2)-phacg(k)-phaut(k)                     &
                    -pvapg(k))*dtcld
@@ -2259,15 +2254,15 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
                    +phacg(k)-pvaph(k)-primh(k))                                &
                    *dtcld
        qrs(k,i,4) = max(qrs(k,i,4)+htotal, 0.)
-       htotal = (-nraut(k)-nccol(k)-nracw(k)                                   &
-                   -naacw(k)-naacw(k)-nhacw(k))*dtcld
+       htotal = (-nraut(k)-nccol(k)-nracw(k)-nsacw(k)-ngacw(k)                 &
+                 -nhacw(k))*dtcld
        ncr(k,i,2) = max(ncr(k,i,2)+htotal, 0.)
        htotal =    (nraut(k)-nrcol(k)-niacr(k)                                 &
                    -nsacr(k)-ngacr(k)-nhacr(k))*dtcld
        ncr(k,i,3) = max(ncr(k,i,3)+htotal, 0.)
        hvalue = - xls*(psdep(k)+pgdep(k)+phdep(k)+pidep(k)+pigen(k))           &
-               - xlv(k)*prevp(k) - xlf(k)*(piacr(k)+paacw(k)+phacw(k)          &
-               + paacw(k)+pgacr(k)+psacr(k)+phacr(k))
+               - xlv(k)*prevp(k) - xlf(k)*(piacr(k)+psacw(k)+pgacw(k)          &
+               + phacw(k)+pgacr(k)+psacr(k)+phacr(k))
        t(k,i) = t(k,i) - hvalue/cpm(k)*dtcld
 !
      else    
@@ -2275,12 +2270,13 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 ! cloud water
 !
        hvalue = max(qmin,qci(k,i,1))
-       source = (praut(k)+pracw(k)+paacw(k)+paacw(k)-phacw(k))*dtcld
+       source = (praut(k)+pracw(k)+psacw(k)+pgacw(k)+phacw(k))*dtcld
        if (source>hvalue) then
          factor = hvalue/source
          praut(k) = praut(k) * factor
          pracw(k) = pracw(k) * factor
-         paacw(k) = paacw(k) * factor
+         psacw(k) = psacw(k) * factor
+         pgacw(k) = pgacw(k) * factor
          phacw(k) = phacw(k) * factor
        endif
 !
@@ -2288,13 +2284,14 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 !
        hvalue = max(qmin,qrs(k,i,1))
        source = (-prevp(k)-praut(k)+pseml(k)+pgeml(k)+pheml(k)                 &
-                 -pracw(k)-paacw(k)-paacw(k)-phacw(k))*dtcld
+                 -pracw(k)-psacw(k)-pgacw(k)-phacw(k))*dtcld
        if (source>hvalue) then
          factor = hvalue/source
          praut(k) = praut(k) * factor
          prevp(k) = prevp(k) * factor
          pracw(k) = pracw(k) * factor
-         paacw(k) = paacw(k) * factor
+         psacw(k) = psacw(k) * factor
+         pgacw(k) = pgacw(k) * factor
          pseml(k) = pseml(k) * factor
          pgeml(k) = pgeml(k) * factor
          phacw(k) = phacw(k) * factor
@@ -2340,13 +2337,15 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 !     cloud
 !
        hvalue = max(qmin,ncr(k,i,2))
-       source = (+nraut(k)+nccol(k)+nracw(k)+naacw(k)+naacw(k)+nhacw(k))*dtcld
+       source = (+nraut(k)+nccol(k)+nracw(k)+nsacw(k)+ngacw(k)                 &
+                 +nhacw(k))*dtcld
        if (source>hvalue) then
          factor = hvalue/source
          nraut(k) = nraut(k) * factor
          nccol(k) = nccol(k) * factor
          nracw(k) = nracw(k) * factor
-         naacw(k) = naacw(k) * factor
+         nsacw(k) = nsacw(k) * factor
+         ngacw(k) = ngacw(k) * factor
          nhacw(k) = nhacw(k) * factor
        endif
 !
@@ -2367,10 +2366,10 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 !
        htotal = -(prevp(k)+psevp(k)+pgevp(k)+phevp(k))
        q(k,i) = q(k,i) + htotal*dtcld
-       htotal =   (praut(k)+pracw(k)+paacw(k)+paacw(k)+phacw(k))*dtcld
+       htotal =   (praut(k)+pracw(k)+psacw(k)+pgacw(k)+phacw(k))*dtcld
        qci(k,i,1) = max(qci(k,i,1)-htotal,0.)
        htotal =    (praut(k)+pracw(k)                                          &
-                   +prevp(k)+paacw(k)+paacw(k)+phacw(k)                        &
+                   +prevp(k)+psacw(k)+pgacw(k)+phacw(k)                        &
                    -pseml(k)-pgeml(k)-pheml(k))*dtcld
        qrs(k,i,1) = max(qrs(k,i,1)+htotal, 0.)
        htotal =    (psevp(k)-pgacs(k)-phacs(k)+pseml(k))*dtcld
@@ -2379,8 +2378,8 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
        qrs(k,i,3) = max(qrs(k,i,3)+htotal, 0.)
        htotal =    (phacs(k)+phacg(k)+phevp(k)+pheml(k))*dtcld
        qrs(k,i,4) = max(qrs(k,i,4)+htotal, 0.)
-       htotal =    (-nraut(k)-nccol(k)-nracw(k)                                &
-                   -naacw(k)-naacw(k)-nhacw(k))*dtcld
+       htotal =    (-nraut(k)-nccol(k)-nracw(k)-nsacw(k)-ngacw(k)              &
+                   -nhacw(k))*dtcld
        ncr(k,i,2) = min(max(ncr(k,i,2)+htotal,0.),ncmax)
        htotal =    (nraut(k)-nrcol(k)+nseml(k)+ngeml(k)+nheml(k))*dtcld
        ncr(k,i,3) = min(max(ncr(k,i,3) + htotal,0.),nrmax)
@@ -2429,6 +2428,13 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
      qsat_mul(k) = ep2 * qsat_mul(k) / (p(k,i) - qsat_mul(k))
      qsat_mul(k) = max(qsat_mul(k),qmin)
      rh_mul(k)   = max(q(k,i) / qsat_mul(k),qmin)
+     if(rh_mul(k) >= 1.0) then
+       ncr(k,i,1) = max(ncr(k,i,1),ccnmin*den(k,i)*3.981*(1.0                  &
+                    + 0.5*(rh_mul(k)-1.0)))
+     else
+       ncr(k,i,1) = max(ncr(k,i,1),ccnmin*den(k,i)*(1.0-min(rh_mul(k),         &
+                    0.99))**(-0.3))
+     endif
    enddo
 !
    call find_cloud_top(1,kdim,ktopini,rh_mul(:), one_1,ktoprh)
@@ -2446,7 +2452,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
                      (3.*den(k,i)),max(q(k,i),0.)*rdtcld)
        q(k,i) = max(q(k,i) - pcact(k)*dtcld,0.)
        qci(k,i,1) = max(qci(k,i,1) + pcact(k)*dtcld,0.)
-       ncr(k,i,1) = max(ncr(k,i,1) - ncact(k)*dtcld, ccnmin)
+       ncr(k,i,1) = ncr(k,i,1) - ncact(k)*dtcld
        ncr(k,i,2) = max(ncr(k,i,2) + ncact(k)*dtcld, ncmin)
        t(k,i) = t(k,i) + pcact(k)*xlv(k)/cpm(k)*dtcld
      endif
@@ -2570,7 +2576,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
            ncr(k,i,3) = max(denqn(k)/dend(k),0.)
        enddo
 !
-       precip_r = qrpath/dtcld + precip_r   ! [kgm-2s-1]
+       precip_r = qrpath*rdtcld + precip_r   ! [kgm-2s-1]
 !
      enddo
    endif
@@ -2640,9 +2646,9 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
          qrs(k,i,4) = max(denqh(k)/dend(k),0.)
        enddo
 !
-       precip_s = qspath/dtcld + precip_s   ! [kgm-2s-1]
-       precip_g = qgpath/dtcld + precip_g   ! [kgm-2s-1]
-       precip_h = qhpath/dtcld + precip_h   ! [kgm-2s-1]
+       precip_s = qspath*rdtcld + precip_s   ! [kgm-2s-1]
+       precip_g = qgpath*rdtcld + precip_g   ! [kgm-2s-1]
+       precip_h = qhpath*rdtcld + precip_h   ! [kgm-2s-1]
      enddo
    endif
 !-------------------------------------------------------------------------------
@@ -2688,7 +2694,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
          qci(k,i,2) = max(denqi(k)/dend(k),0.)
        enddo
 !
-       precip_i = qipath/dtcld + precip_i   ! [kgm-2s-1]
+       precip_i = qipath*rdtcld + precip_i   ! [kgm-2s-1]
      enddo
    endif
 !===============================================================================
@@ -2697,18 +2703,18 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
 ! for wrf unit is mm, whereas it is m for ufs
 !
 !===============================================================================
-   hvalue = 1000.
+   hunit = 1000.
    precip_sum = precip_r + precip_s + precip_i + precip_g + precip_h
    precip_ice = precip_s + precip_i + precip_h
 !
    if(precip_sum>0.) then
-     hvalue =  precip_sum/denr*dtcld*hvalue
+     hvalue =  precip_sum/denr*dtcld*hunit
      rainncv(i) = hvalue + rainncv(i)
      rain(i)    = hvalue + rain(i)
    endif
 !
    if(precip_ice>0.) then
-     hvalue = precip_ice/denr*dtcld*hvalue
+     hvalue = precip_ice/denr*dtcld*hunit
      tstepsnow   = hvalue + tstepsnow
      if ( present (snowncv) .and. present (snow)) then
        snowncv(i) = hvalue + snowncv(i)
@@ -2717,7 +2723,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
    endif
 !
    if(precip_g>0.) then
-     hvalue = precip_g/denr*dtcld*hvalue
+     hvalue = precip_g/denr*dtcld*hunit
      tstepgraupel   = hvalue + tstepgraupel
      if ( present (graupelncv) .and. present (graupel)) then
        graupelncv(i) = hvalue + graupelncv(i)
@@ -2726,7 +2732,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
    endif
 !
    if(precip_h>0.) then
-     hvalue = precip_h/denr*dtcld*hvalue
+     hvalue = precip_h/denr*dtcld*hunit
      tstephail   = hvalue + tstephail
      if ( present (hailncv) .and. present (hail)) then
        hailncv(i) = hvalue + hailncv(i)
@@ -2787,7 +2793,7 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
    implicit none
 !
    integer,              intent(in   ) :: kdim, ktop
-   real(kind=kind_phys), intent(in   ) :: t0c, den0 
+   real(kind=kind_phys), intent(in   ) :: t0c, den0
    real(kind=kind_phys), dimension(kdim), &
         intent(in   ) ::                                                       &
                                                                           qrs, &
@@ -2822,15 +2828,11 @@ subroutine mp_udm_run(ncol, nlev, t1, q1 &
      vt(k) = pvtr*rslopeb(k)*denfac(k)
    enddo
 !  size distributions: (x=mixing ratio, y=air density):
-   contains 
-   elemental real function lamdar2m(x, y, z)
-       real, intent(in) :: x, y, z
+   contains
+   elemental real(kind=kind_phys) function lamdar2m(x, y, z)
+       real(kind=kind_phys), intent(in) :: x, y, z
        lamdar2m = exp(log(((pidnr * z) / (x * y))) * (0.33333333))
    end function lamdar2m
-   elemental real function lamdar1m(x, y)
-       real, intent(in) :: x, y
-       lamdar1m = exp(log(((pidn0r) / (x * y))) * (0.25))
-   end function lamdar1m
 end subroutine slope_rain
 !-------------------------------------------------------------------------------
 !
@@ -2884,9 +2886,9 @@ end subroutine slope_rain
      vt(k) = pvtg*rslopeb(k)*denfac(k)
    enddo
 !  size distributions: (x=mixing ratio, y=air density):
-   contains 
-   elemental real function lamdag(x, y, z)
-       real, intent(in) :: x, y, z
+   contains
+   elemental real(kind=kind_phys) function lamdag(x, y, z)
+       real(kind=kind_phys), intent(in) :: x, y, z
        lamdag = exp(log(((pidn0g * z) / (x * y))) * (0.25))
    end function lamdag
 end subroutine slope_graupel
@@ -2918,7 +2920,7 @@ end subroutine slope_graupel
    real(kind=kind_phys), dimension(kdim ) ::                                   &
                                                                        n0hfac
   real(kind=kind_phys)       ::  lamda, tc, hvalue
-  integer ::  k
+  integer :: k
 !-------------------------------------------------------------------------------
    n0hfac(:) = 0.0
      do k = 1, ktop
@@ -2941,9 +2943,9 @@ end subroutine slope_graupel
        vt(k) = pvth*rslopeb(k)*denfac(k)
      enddo
 !  size distributions: (x=mixing ratio, y=air density):
-   contains 
-   elemental real function lamdah(x, y, z)
-       real, intent(in) :: x, y, z
+   contains
+   elemental real(kind=kind_phys) function lamdah(x, y, z)
+       real(kind=kind_phys), intent(in) :: x, y, z
        lamdah = exp(log(((pidn0h * z) / (x * y))) * (0.25))
    end function lamdah
 end subroutine slope_hail
@@ -2987,9 +2989,9 @@ end subroutine slope_hail
      endif
    enddo
 !  size distributions: (x=mixing ratio, y=air density):
-   contains 
-   elemental real function lamdac(x, y, z)
-       real, intent(in) :: x, y, z
+   contains
+   elemental real(kind=kind_phys) function lamdac(x, y, z)
+       real(kind=kind_phys), intent(in) :: x, y, z
        lamdac = exp(log(((pidnc * z) / (x * y))) * (0.33333333))
    end function lamdac
 end subroutine slope_cloud
@@ -3046,9 +3048,9 @@ subroutine slope_snow(kdim, ktop, qrs, den, denfac, t, rslope, rslopeb,        &
      vt(k) = pvts*rslopeb(k)*denfac(k)
    enddo
 !  size distributions: (x=mixing ratio, y=air density):
-   contains 
-   elemental real function lamdas(x, y, z)
-       real, intent(in) :: x, y, z
+   contains
+   elemental real(kind=kind_phys) function lamdas(x, y, z)
+       real(kind=kind_phys), intent(in) :: x, y, z
        lamdas = exp(log(((pidn0s * z) / (x * y))) * (0.25))
    end function lamdas
 end subroutine slope_snow
@@ -3162,20 +3164,17 @@ end subroutine slope_snow
 ! save departure wind
      wd(:) = ww(:)
      n=1
-     wi(1) = ww(1)
-     wi(ktop+1) = ww(ktop)
-     do k=2,ktop
-       wi(k) = (ww(k)*dz(k-1)+ww(k-1)*dz(k))/(dz(k-1)+dz(k))
-     enddo
 !
 ! 3rd order interpolation to get wi
      wi(1) = ww(1)
-     wi(2) = 0.5*(ww(2)+ww(1))
-     do k=3,ktop-1
-       wi(k) = fa1*(ww(k)+ww(k-1))-fa2*(ww(k+1)+ww(k-2))
-     enddo
-     wi(ktop) = 0.5*(ww(ktop)+ww(ktop-1))
      wi(ktop+1) = ww(ktop)
+     if (ktop >= 2) then
+       wi(2)    = 0.5 * (ww(2) + ww(1))
+       wi(ktop) = 0.5 * (ww(ktop) + ww(ktop-1))
+       do k = 3, ktop - 1
+         wi(k) = fa1 * (ww(k) + ww(k-1)) - fa2 * (ww(k+1) + ww(k-2))
+       enddo
+     endif
 !
 ! terminate of top of raingroup
      do k=2,ktop
@@ -3512,21 +3511,22 @@ end subroutine udminit
 !
 !
 !-------------------------------------------------------------------------------
-real function rgmma(x)
+real(kind=kind_phys) function rgmma(x)
 !-------------------------------------------------------------------------------
    implicit none
 !-------------------------------------------------------------------------------
 !     rgmma function:  use infinite product form
    real(kind=kind_phys) :: euler
    parameter (euler=0.577215664901532)
-   real(kind=kind_phys) :: x, y
+   real(kind=kind_phys), intent(in) :: x
+   real(kind=kind_phys) :: y
    integer :: i
    if(x==1.)then
-     rgmma=0.
-       else
+     rgmma=1.
+   else
      rgmma=x*exp(euler*x)
      do i=1,10000
-       y=float(i)
+       y=real(i, kind=kind_phys)
        rgmma=rgmma*(1.000+x/y)*exp(-x/y)
      enddo
      rgmma=1./rgmma
@@ -3751,7 +3751,7 @@ subroutine udm_mp_reflectivity (qv1d, qr1d, qs1d, qg1d,                        &
       l_qr = .false. ;  l_qs = .false. ;  l_qg = .false. ;  l_qh = .false.
 !
       ze_rain(:) = 0. ;  ze_snow(:) = 0. ;  ze_graupel(:) = 0.
-      fmelt_s = 0. ; fmelt_g = 0. 
+      fmelt_s = 0. ; fmelt_g = 0.
       ze_hail(:) = 0. ; fmelt_h = 0.
 !
       melti = .false.
@@ -3877,7 +3877,7 @@ subroutine udm_mp_reflectivity (qv1d, qr1d, qs1d, qg1d,                        &
            f_d = n0_s(k)*xxds(n)**xmu_s * dexp(-lams*xxds(n))
            eta = eta + f_d * cback * simpson(n) * xdts(n)
         enddo
-        ze_snow(k) = sngl(lamda4 / (pi5 * k_w) * eta)
+        ze_snow(k) = real(lamda4 / (pi5 * k_w) * eta)
        endif
 !..Reflectivity contributed by melting graupel
           if (L_qg(k) .and. L_qg(k_0) ) then
@@ -3894,7 +3894,7 @@ subroutine udm_mp_reflectivity (qv1d, qr1d, qs1d, qg1d,                        &
               f_d = N0_g(k)*xxDg(n)**xmu_g * DEXP(-lamg*xxDg(n))
               eta = eta + f_d * CBACK * simpson(n) * xdtg(n)
            enddo
-           ze_graupel(k) = SNGL(lamda4 / (pi5 * K_w) * eta)
+           ze_graupel(k) = real(lamda4 / (pi5 * K_w) * eta)
           endif
 !..Reflectivity contributed by melting hail
           if (L_qh(k) .and. L_qh(k_0) ) then
@@ -3911,7 +3911,7 @@ subroutine udm_mp_reflectivity (qv1d, qr1d, qs1d, qg1d,                        &
               f_d = N0_h(k)*xxDh(n)**xmu_h * DEXP(-lamh*xxDh(n))
               eta = eta + f_d * CBACK * simpson(n) * xdth(n)
            enddo
-           ze_hail(k) = SNGL(lamda4 / (pi5 * K_w) * eta)
+           ze_hail(k) = real(lamda4 / (pi5 * K_w) * eta)
           endif
      enddo
    endif
@@ -3943,9 +3943,9 @@ end subroutine udm_mp_reflectivity
 !-------------------------------------------------------------------------------
    implicit none
 !
-   real   , parameter  ::  xmin = 10.e-6, xmax = 10.e-3
+   real(kind=kind_phys), parameter  ::  xmin = 10.e-6, xmax = 10.e-3
    integer             ::  jx
-   real                ::  xinc,x,d
+   real(kind=kind_phys)             ::  xinc,x,d
 !
    xinc = (xmax-xmin)/(nxshape-1)
    c1xshape = 1.-xmin/xinc
@@ -3960,7 +3960,7 @@ end subroutine udm_mp_reflectivity
    return
    end subroutine udm_funct_shape_setup
 !-------------------------------------------------------------------------------
-   real function fshapex(d)
+   real(kind=kind_phys) function fshapex(d)
 !-------------------------------------------------------------------------------
 !
 !  abstract : exactly compute velocity ratio from diameter.
@@ -3985,11 +3985,11 @@ end subroutine udm_mp_reflectivity
 !
 ! passing variable
 !
-   real   , intent(in   )  ::  d
+   real(kind=kind_phys)   , intent(in   )  ::  d
 !
 ! local variable
 !
-   real                    ::  shape_rain
+   real(kind=kind_phys)    ::  shape_rain
 !
      shape_rain =  min(11.8*(1000.*d-0.7)**2 + 2.,10.)
      fshapex = max(rgmma(4.+shape_rain+bvtr)*rgmma(1.+shape_rain)              &
@@ -3998,7 +3998,7 @@ end subroutine udm_mp_reflectivity
    return
    end function fshapex
 !-------------------------------------------------------------------------------
-   real function fshape(d)
+   real(kind=kind_phys) function fshape(d)
 !-------------------------------------------------------------------------------
 !
 !  abstract : compute velocity ratio from the diameter of drops.
@@ -4017,10 +4017,10 @@ end subroutine udm_mp_reflectivity
 !-------------------------------------------------------------------------------
    implicit none
 !
-   real   , intent(in   )            ::  d
+   real(kind=kind_phys)   , intent(in   )            ::  d
 !
    integer  ::  jx
-   real     ::  xj
+   real(kind=kind_phys)     ::  xj
 !
    xj = min(max(c1xshape+c2xshape*d,1.),real(nxshape))
    jx = min(xj,nxshape-1.)
@@ -4053,9 +4053,9 @@ end subroutine udm_mp_reflectivity
 !-------------------------------------------------------------------------------
    implicit none
 !
-   real   , parameter  ::  xmin = 1.e+4, xmax = 1.e+7
+   real(kind=kind_phys), parameter  ::  xmin = 1.e+4, xmax = 1.e+7
    integer             ::  jx, nu
-   real                ::  xinc,x,d
+   real(kind=kind_phys)::  xinc,x,d
 !
    double precision    ::  funct_aut_qc_totx,funct_aut_qc_subx
    double precision    ::  funct_aut_nc_totx,funct_aut_nc_subx
@@ -4106,7 +4106,7 @@ end subroutine udm_mp_reflectivity
 !
 ! passing variable
 !
-   real   , intent(in   )    ::  lamc
+   real(kind=kind_phys)   , intent(in   )    ::  lamc
    double precision, intent(inout  )   ::  qc_tot,qc_sub,nc_tot,nc_sub
    double precision, parameter         :: &
                   r_star    = 50.0d-6,    &  !< from 40 micro-m in lb2017
@@ -4123,7 +4123,7 @@ end subroutine udm_mp_reflectivity
   (/a_aut, 1+a_aut, 1-2*a_aut, -2-2*a_aut, -2+a_aut, 1+a_aut,1.0d0/)
    integer :: n, nn, nu_c
 !
-   gamma1(:) = 0. ; gamma2(:) = 0. 
+   gamma1(:) = 0. ; gamma2(:) = 0.
    exp1(:) = 0.   ; exp2(:) = 0. ; exp3(:) = 0. ; err1(:) = 0.; err2(:) = 0.
    term = 0.      ; temp11 = 0.0 ; temp12 = 0.  ; temp21 = 0. ; temp22 = 0.
 !
@@ -4236,7 +4236,7 @@ end subroutine udm_mp_reflectivity
    integer   , intent(in   )            :: nu
 !
    integer  ::  jx
-   real     ::  xj
+   real(kind=kind_phys) ::  xj
 !
    xj = min(max(c1xaut+c2xaut*d,1.d0), dble(nxaut))
    jx = min(xj, nxaut -1.)
@@ -4269,7 +4269,7 @@ end subroutine udm_mp_reflectivity
    integer   , intent(in   )            :: nu
 !
    integer  ::  jx
-   real     ::  xj
+   real(kind=kind_phys)   ::  xj
 !
    xj = min(max(c1xaut+c2xaut*d,1.d0),dble(nxaut))
    jx = min(xj, nxaut -1.)
@@ -4302,7 +4302,7 @@ end subroutine udm_mp_reflectivity
    integer   , intent(in   )            :: nu
 !
    integer  ::  jx
-   real     ::  xj
+   real(kind=kind_phys)     ::  xj
 !
    xj = min(max(c1xaut+c2xaut*d,1.d0),dble(nxaut))
    jx = min(xj, nxaut -1.)
@@ -4335,7 +4335,7 @@ end subroutine udm_mp_reflectivity
    integer   , intent(in   )            :: nu
 !
    integer  ::  jx
-   real     ::  xj
+   real(kind=kind_phys)     ::  xj
 !
    xj = min(max(c1xaut+c2xaut*d,1.d0),dble(nxaut))
    jx = min(xj, nxaut -1.)
@@ -4372,10 +4372,9 @@ end subroutine udm_mp_reflectivity
 !-------------------------------------------------------------------------------
    implicit none
 !
-   real   , parameter  ::  xmin = 180.0,                                       &
-                           xmax = 330.0
+   real(kind=kind_phys), parameter  ::  xmin = 180.0, xmax = 330.0
    integer             ::  jx
-   real                ::  xinc,x,t
+   real(kind=kind_phys)::  xinc,x,t
 !
    xinc = (xmax-xmin)/(nxsvp-1)
    c1xsvp = 1.-xmin/xinc
@@ -4393,7 +4392,7 @@ end subroutine udm_mp_reflectivity
    return
    end subroutine udm_funct_svp_setup
 !-------------------------------------------------------------------------------
-   real function fsvpx(t)
+   real(kind=kind_phys) function fsvpx(t)
 !-------------------------------------------------------------------------------
 !
 !  abstract : exactly compute saturation vapor pressure from temperature.
@@ -4416,11 +4415,11 @@ end subroutine udm_mp_reflectivity
 !
 ! passing variable
 !
-   real   , intent(in   )  ::  t
+   real(kind=kind_phys)   , intent(in   )  ::  t
 !
 ! local variable
 !
-   real                    ::  tr
+   real(kind=kind_phys)                    ::  tr
 !
    tr = ttp_/t
    if (t >= ttp_) then
@@ -4432,7 +4431,7 @@ end subroutine udm_mp_reflectivity
    return
    end function fsvpx
 !-------------------------------------------------------------------------------
-   real function fsvpxw(t)
+   real(kind=kind_phys) function fsvpxw(t)
 !-------------------------------------------------------------------------------
 !
 !  abstract : same to fxvps but water only
@@ -4440,8 +4439,8 @@ end subroutine udm_mp_reflectivity
 !-------------------------------------------------------------------------------
    implicit none
 !
-   real   , intent(in   )  ::  t
-   real                    ::  tr
+   real(kind=kind_phys), intent(in   )  ::  t
+   real(kind=kind_phys)                 ::  tr
 !
    tr = ttp_/t
    fsvpxw = psatk*(tr**xa)*exp(xb*(1.-tr))
@@ -4449,7 +4448,7 @@ end subroutine udm_mp_reflectivity
    return
    end function fsvpxw
 !-------------------------------------------------------------------------------
-   real function fsvp(t,p)
+   real(kind=kind_phys) function fsvp(t,p)
 !-------------------------------------------------------------------------------
 !
 !  abstract : compute saturation vapor pressure from the temperature.
@@ -4468,11 +4467,11 @@ end subroutine udm_mp_reflectivity
 !-------------------------------------------------------------------------------
    implicit none
 !
-   real   , intent(in   )            ::  t
-   real   , intent(in   ), optional  ::  p
+   real(kind=kind_phys)   , intent(in   )            ::  t
+   real(kind=kind_phys)   , intent(in   ), optional  ::  p
 !
    integer  ::  jx
-   real     ::  xj
+   real(kind=kind_phys)     ::  xj
 !
    xj = min(max(c1xsvp+c2xsvp*t,1.),real(nxsvp))
    jx = min(xj,nxsvp-1.)
@@ -4483,7 +4482,7 @@ end subroutine udm_mp_reflectivity
    return
    end function fsvp
 !-------------------------------------------------------------------------------
-   real function fsvp_water(t,p)
+   real(kind=kind_phys) function fsvp_water(t,p)
 !-------------------------------------------------------------------------------
 !
 !  abstract : same to fsvp but water only
@@ -4491,11 +4490,11 @@ end subroutine udm_mp_reflectivity
 !-------------------------------------------------------------------------------
    implicit none
 !
-   real   , intent(in   )            ::  t
-   real   , intent(in   ), optional  ::  p
+   real(kind=kind_phys)   , intent(in   )            ::  t
+   real(kind=kind_phys)   , intent(in   ), optional  ::  p
 !
    integer  ::  jx1
-   real     ::  xj1
+   real(kind=kind_phys)     ::  xj1
 !
    xj1 = min(max(c1xsvpw+c2xsvpw*t,1.),real(nxsvpw))
    jx1 = min(xj1,nxsvpw-1.)
@@ -4509,12 +4508,12 @@ end subroutine udm_mp_reflectivity
 !
 !
 !-------------------------------------------------------------------------------
-      real function iceDeMott(tc, den, nifa) 
+      real(kind=kind_phys) function iceDeMott(tc, den, nifa)
       implicit none
-      REAL, INTENT(IN):: tc, nifa, den
-      REAL:: xni, nifa_cc, hvalue
+      real(kind=kind_phys), INTENT(IN):: tc, nifa, den
+      real(kind=kind_phys):: xni, nifa_cc, hvalue
 !..Local vars
-      REAL, PARAMETER:: rho_not0 = 101325./(287.05*273.15)
+      real(kind=kind_phys), PARAMETER:: rho_not0 = 101325./(287.05*273.15)
 !     tc(k) = t(k,i) - t0c
 !     if(t(k,i)<t0c) ifice(k) = .true.
       xni = 0.0
@@ -4526,14 +4525,14 @@ end subroutine udm_mp_reflectivity
                  * (nifa_cc**((-0.0264*(hvalue))+0.0033)) ! to n(IN,Tk) (unit:std/L at Tk)
       xni = xni*den/rho_not0*1000. ! (unit:std/L at Tk) to (unit:#/m3)
       iceDeMott = MAX(inpmin, xni)
-      end FUNCTION iceDeMott 
+      end FUNCTION iceDeMott
 !-------------------------------------------------------------------------------
 !
 !
 !-------------------------------------------------------------------------------
-      real function stull_wet_bulb(t, rh)
-        real, intent(in) :: t, rh
-        real :: tw_val
+      real(kind=kind_phys) function stull_wet_bulb(t, rh)
+        real(kind=kind_phys), intent(in) :: t, rh
+        real(kind=kind_phys) :: tw_val
         tw_val = t * atan(0.151977 * sqrt(rh + 8.313659)) +                    &
                  atan(t + rh) - atan(rh - 1.676331) +                          &
                  0.00391838 * (rh**1.5) * atan(0.023101 * rh) - 4.686035
